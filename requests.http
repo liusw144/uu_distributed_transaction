@@ -1,0 +1,56 @@
+### XA 成功（每次更换业务号，IDE HTTP Client 支持 {{$uuid}}）
+POST http://127.0.0.1:8081/api/xa/orders
+Content-Type: application/json
+
+{"orderId":"xa-{{$uuid}}","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":10.50,"failAt":"NONE"}
+
+### XA：扣款后抛异常，观察两库同时回滚
+POST http://127.0.0.1:8081/api/xa/orders
+Content-Type: application/json
+
+{"orderId":"xa-fail-{{$uuid}}","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":10.50,"failAt":"AFTER_ACCOUNT"}
+
+### XA 两库状态
+GET http://127.0.0.1:8081/api/xa/state
+
+### Outbox：模拟扣款已提交但 ACK 丢失，然后调用下一条下单
+POST http://127.0.0.1:8082/demo/faults?loseAckNext=1
+
+### Outbox 下单，最初返回 PENDING
+POST http://127.0.0.1:8082/api/outbox/orders
+Content-Type: application/json
+
+{"orderId":"outbox-{{$uuid}}","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":10.50,"failAt":"NONE"}
+
+### 查看次数、错误和 DONE/DEAD 状态
+GET http://127.0.0.1:8082/api/outbox/tasks
+
+### 最终订单、余额和库存
+GET http://127.0.0.1:8082/api/outbox/state
+
+### Seata AT 成功，全局事务跨三个独立服务
+POST http://127.0.0.1:8083/api/at/orders
+Content-Type: application/json
+
+{"orderId":"at-{{$uuid}}","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":10.50,"failAt":"NONE"}
+
+### Seata AT：所有分支已本地提交后，故意触发全局回滚
+POST http://127.0.0.1:8083/api/at/orders
+Content-Type: application/json
+
+{"orderId":"at-fail-{{$uuid}}","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":10.50,"failAt":"AFTER_ACCOUNT"}
+
+### AT 两库状态
+GET http://127.0.0.1:8083/api/at/state
+
+### 通知：先失败两次，再丢一次 ACK
+POST http://127.0.0.1:8086/demo/faults?failNext=2&loseAckNext=1
+
+### 本地记录支付事实和待通知任务
+POST http://127.0.0.1:8086/api/notify/payments
+Content-Type: application/json
+
+{"orderId":"notify-{{$uuid}}","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":10.50,"failAt":"NONE"}
+
+### 查看通知重试状态
+GET http://127.0.0.1:8086/api/notify/tasks

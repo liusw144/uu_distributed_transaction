@@ -1,0 +1,19 @@
+server:
+  address: 127.0.0.1
+  port: ${SERVER_PORT:8081}
+spring:
+  application:
+    name: xa-demo
+demo:
+  datasource:
+    mode: xa
+atomikos:
+  properties:
+    transaction-manager-unique-name: dtx-xa-local
+    log-base-dir: ${XA_LOG_DIR:.runtime/xa-logs}
+    enable-logging: true
+    default-jta-timeout: 30000
+    max-timeout: 60000
+logging:
+  level:
+    com.atomikos: INFO

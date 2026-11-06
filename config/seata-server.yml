@@ -1,0 +1,30 @@
+server:
+  address: 127.0.0.1
+  port: 7091
+spring:
+  application:
+    name: seata-server
+logging:
+  file:
+    path: ${log.home:.runtime/logs/seata}
+console:
+  user:
+    username: seata
+    password: seata
+seata:
+  config:
+    type: file
+  registry:
+    type: file
+  store:
+    mode: file
+    file:
+      dir: ${SEATA_STORE_DIR:.runtime/seata-data}
+  server:
+    service-port: 8091
+  security:
+    secretKey: SeataSecretKey0c382ef121d778043159209298fd40bf3850a017
+    tokenValidityInMilliseconds: 1800000
+    csrf-ignore-urls: /metadata/v1/**
+    ignore:
+      urls: /,/**/*.css,/**/*.js,/**/*.html,/**/*.map,/**/*.svg,/**/*.png,/**/*.jpeg,/**/*.ico,/api/v1/auth/login,/version.json,/health,/error,/vgroup/v1/**

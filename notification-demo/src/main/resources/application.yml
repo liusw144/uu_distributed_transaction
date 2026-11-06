@@ -1,0 +1,14 @@
+server:
+  address: 127.0.0.1
+  port: ${SERVER_PORT:8086}
+spring:
+  application:
+    name: notification-demo
+demo:
+  queue:
+    enabled: true
+  callback-url: ${NOTIFY_CALLBACK_URL:http://127.0.0.1:8086/api/notify/callback}
+  retry:
+    max-attempts: ${RETRY_MAX_ATTEMPTS:8}
+    base-seconds: ${RETRY_BASE_SECONDS:1}
+    max-seconds: ${RETRY_MAX_SECONDS:60}

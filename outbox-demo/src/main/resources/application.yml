@@ -1,0 +1,14 @@
+server:
+  address: 127.0.0.1
+  port: ${SERVER_PORT:8082}
+spring:
+  application:
+    name: outbox-demo
+demo:
+  queue:
+    enabled: true
+  consumer-url: ${OUTBOX_CONSUMER_URL:http://127.0.0.1:8082/api/outbox/consume}
+  retry:
+    max-attempts: ${RETRY_MAX_ATTEMPTS:8}
+    base-seconds: ${RETRY_BASE_SECONDS:1}
+    max-seconds: ${RETRY_MAX_SECONDS:60}
