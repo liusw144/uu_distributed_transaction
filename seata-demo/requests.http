@@ -1,0 +1,101 @@
+# 每次新一轮修改 @run；重复提交成功订单时不要改业务号。
+# 基线 B=余额，S=库存。执行顺序和 SQL 见同目录 README.md。
+@base = http://127.0.0.1:8083
+@run = manual-001
+
+### 1. 查询验证前基线 B、S
+GET {{base}}/api/at/state
+
+### 2. 成功下单
+# 预期 200 / PAID，返回非空 xid
+POST {{base}}/api/at/orders
+Content-Type: application/json
+
+{
+  "orderId": "at-{{run}}-ok",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "NONE"
+}
+
+### 3. 核对成功订单、余额 B-10、库存 S-1
+GET {{base}}/api/at/state
+
+### 4.order. AFTER_ORDER 故障回滚
+# 预期错误响应；最终不得留下此订单，余额和库存恢复到步骤 3
+POST {{base}}/api/at/orders
+Content-Type: application/json
+
+{
+  "orderId": "at-{{run}}-after-order",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "AFTER_ORDER"
+}
+
+### 4.stock. AFTER_STOCK 故障回滚
+# 预期错误响应；最终不得留下此订单，余额和库存恢复到步骤 3
+POST {{base}}/api/at/orders
+Content-Type: application/json
+
+{
+  "orderId": "at-{{run}}-after-stock",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "AFTER_STOCK"
+}
+
+### 4.account. AFTER_ACCOUNT 故障回滚
+# 预期错误响应；最终不得留下此订单，余额和库存恢复到步骤 3
+POST {{base}}/api/at/orders
+Content-Type: application/json
+
+{
+  "orderId": "at-{{run}}-after-account",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "AFTER_ACCOUNT"
+}
+
+### 5. 查询三种故障后的两库状态
+# 预期 B-10 / S-1，三个 after-* 订单不存在；若处于回滚中请稍后重复查询
+GET {{base}}/api/at/state
+
+### 6. 重复提交步骤 2 的业务号
+# 预期错误响应，不再次扣减
+POST {{base}}/api/at/orders
+Content-Type: application/json
+
+{
+  "orderId": "at-{{run}}-ok",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "NONE"
+}
+
+### 7. 直接访问库存分支，不提供 TX_XID
+# 此条直接访问 8084：预期 409，库存不变
+POST http://127.0.0.1:8084/internal/stock
+Content-Type: application/json
+
+{
+  "orderId": "at-{{run}}-no-xid",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "NONE"
+}
+
+### 8. 最终结果：只保留 ok 订单，余额 B-10，库存 S-1
+GET {{base}}/api/at/state

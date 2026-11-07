@@ -1,3 +1,4 @@
+# 旧版集中验证工具保留；当前验证入口为四个 Demo 下的 README.md / requests.http / JUnit。
 param([int]$TimeoutSeconds=180)
 . "$PSScriptRoot/env.ps1"
 $base='http://127.0.0.1:8086/api/notify'

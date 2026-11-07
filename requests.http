@@ -1,3 +1,5 @@
+# 旧版集中示例保留。当前完整验证请使用各 Demo 下的 README.md 和 requests.http。
+
 ### XA 成功（每次更换业务号，IDE HTTP Client 支持 {{$uuid}}）
 POST http://127.0.0.1:8081/api/xa/orders
 Content-Type: application/json

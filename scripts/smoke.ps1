@@ -1,3 +1,4 @@
+# 旧版集中验证工具保留；当前验证入口为四个 Demo 下的 README.md / requests.http / JUnit。
 param([switch]$IncludeAt,[switch]$IncludeXa)
 . "$PSScriptRoot/env.ps1"
 function Assert-True($condition,[string]$message) { if(!$condition) { throw "验证失败：$message" } }

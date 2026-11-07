@@ -1,0 +1,136 @@
+# 新一轮修改 @run；按 A、B、C、D 逐组执行，每组完成后再继续。
+# 异步查询按 id 查当前任务，重复查询直到 DONE / DEAD。
+# 不要直接 Run All，避免后续故障配置影响前面仍在重试的任务。
+@base = http://127.0.0.1:8086
+@run = manual-001
+
+### A1. 接收端先失败一次，再丢一次 ACK
+POST {{base}}/demo/faults?failNext=1&loseAckNext=1
+
+### A2. 记录支付事实和通知任务
+POST {{base}}/api/notify/payments
+Content-Type: application/json
+
+{
+  "orderId": "notify-{{run}}-retry",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "NONE"
+}
+
+### A3. 等待 retry 任务 DONE / ACK，attempts >= 3
+GET {{base}}/api/notify/tasks
+
+### A4. 查询持久化回执 ACK
+GET {{base}}/api/notify/receipts/notify-{{run}}-retry
+
+### A5. 重复通知应返回原 ACK
+POST {{base}}/api/notify/callback
+Content-Type: application/json
+
+{
+  "orderId": "notify-{{run}}-retry",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "NONE"
+}
+
+### B1. 本地提交前失败，预期 409
+POST {{base}}/api/notify/payments
+Content-Type: application/json
+
+{
+  "orderId": "notify-{{run}}-local-fail",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "AFTER_ORDER"
+}
+
+### B2. local-fail 不应有订单
+GET {{base}}/api/notify/state
+
+### B3. local-fail 不应有通知任务
+GET {{base}}/api/notify/tasks
+
+### B4. local-fail 无回执，NOT_FOUND
+GET {{base}}/api/notify/receipts/notify-{{run}}-local-fail
+
+### C1. 让后续通知一直无法送达
+POST {{base}}/demo/faults?failNext=100
+
+### C2. 创建待验证的通知
+POST {{base}}/api/notify/payments
+Content-Type: application/json
+
+{
+  "orderId": "notify-{{run}}-dead-before",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "NONE"
+}
+
+### C3. 等待 dead-before 任务进入 DEAD
+GET {{base}}/api/notify/tasks
+
+### C4. 对账：接收端未处理，回执 NOT_FOUND
+GET {{base}}/api/notify/receipts/notify-{{run}}-dead-before
+
+### C5. 接收端恢复，清零故障
+POST {{base}}/demo/faults
+
+### C6. 使用原事件编号重放
+POST {{base}}/api/notify/tasks/notify-{{run}}-dead-before/replay
+
+### C7. 等待 dead-before 任务 DONE / ACK
+GET {{base}}/api/notify/tasks
+
+### C8. 最终回执 ACK
+GET {{base}}/api/notify/receipts/notify-{{run}}-dead-before
+
+### D1. 接收端正常提交，但每次都丢失 ACK
+POST {{base}}/demo/faults?loseAckNext=100
+
+### D2. 创建待验证的通知
+POST {{base}}/api/notify/payments
+Content-Type: application/json
+
+{
+  "orderId": "notify-{{run}}-dead-ack",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "NONE"
+}
+
+### D3. 等待 dead-ack 任务进入 DEAD
+GET {{base}}/api/notify/tasks
+
+### D4. 对账：接收端已处理，回执 ACK
+GET {{base}}/api/notify/receipts/notify-{{run}}-dead-ack
+
+### D5. 清零故障
+POST {{base}}/demo/faults
+
+### D6. 原事件编号重放，只确认原 ACK
+POST {{base}}/api/notify/tasks/notify-{{run}}-dead-ack/replay
+
+### D7. 等待 dead-ack 任务 DONE / ACK
+GET {{base}}/api/notify/tasks
+
+### D8. 回执仍为 ACK，SQL count(*) 仍为 1
+GET {{base}}/api/notify/receipts/notify-{{run}}-dead-ack
+
+### D9. 最终支付订单状态均为 PAID，无 local-fail 订单
+GET {{base}}/api/notify/state
+
+### 收尾：清零故障，便于下次验证
+POST {{base}}/demo/faults

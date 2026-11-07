@@ -1,5 +1,7 @@
 # 本机验证记录
 
+> 本文为 2026-11-07 的历史验证记录。当前验证步骤与请求已迁入 [XA](../xa-demo/README.md)、[Outbox](../outbox-demo/README.md)、[Seata AT](../seata-demo/README.md)、[通知](../notification-demo/README.md)，可直接运行各模块 HTTP 请求或 JUnit；下文旧脚本命令仅记录当时的执行方式。
+
 验证日期：2026-11-07。使用本机 JDK 17、MySQL 8.0.46（3308）、PostgreSQL 16（5432），实际操作专用库 `dtx_demo_mysql`、`dtx_demo_pg`。
 
 ## 构建与数据库测试
@@ -59,3 +61,9 @@ PASS 死信及重放：ACK丢失=True，原投递次数=3，原回执=ACK
 - 四个方案共用全局业务号命名空间，此约束已写入 README。
 
 本次验证涵盖正常提交、业务异常回滚及通知故障恢复；没有进行数据库断电、XA 协调器崩溃或 Seata TC 崩溃后的恢复压测。恢复日志和固定资源标识已保留，相关机制及限制见 README。
+
+## 2026-11-08：各模块独立验证入口
+
+按四个模块 README 直接启动 Java 进程，并执行对应 requests.http；未调用 .ps1 文件。直接 Maven verify 通过 15 项测试，0 失败、0 错误、0 跳过。HTTP 共 71 个请求：XA 9、Outbox 25、Seata AT 10、通知 27，均通过事务结果与故障恢复断言。验证后停止了本次启动的进程。
+
+构建日志：.runtime/validation-by-module-build.log；HTTP 结果：.runtime/validation-by-module-http.log。测试数据业务号后缀为 verify-1794070467965。

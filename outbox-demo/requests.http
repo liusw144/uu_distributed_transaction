@@ -1,0 +1,144 @@
+# 新一轮修改 @run；每组完成后再进入下一组，不要直接 Run All。
+# 异步状态查询需要按 id 找到当前任务并重复查询，直到 DONE / DEAD。
+# 快速死信启动参数、预期 SQL 和各阶段金额见同目录 README.md。
+@base = http://127.0.0.1:8082
+@run = manual-001
+
+### A1. 查询初始基线 B、S
+GET {{base}}/api/outbox/state
+
+### A2. 模拟扣款已提交但丢失一次 ACK
+POST {{base}}/demo/faults?loseAckNext=1
+
+### A3. 下单：先返回 PENDING
+POST {{base}}/api/outbox/orders
+Content-Type: application/json
+
+{
+  "orderId": "outbox-{{run}}-paid",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "NONE"
+}
+
+### A4. 等待 paid 任务 DONE / PAID，attempts >= 2
+# 重复查询本条，达成后才继续；查找 id=outbox-{{run}}-paid
+GET {{base}}/api/outbox/tasks
+
+### A5. 确认订单 PAID、余额 B-10、库存 S-1
+GET {{base}}/api/outbox/state
+
+### A6. 重复消费，同一事件返回原 PAID
+POST {{base}}/api/outbox/consume
+Content-Type: application/json
+
+{
+  "orderId": "outbox-{{run}}-paid",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "NONE"
+}
+
+### A7. 同事件编号改数量，预期 409 内容冲突
+POST {{base}}/api/outbox/consume
+Content-Type: application/json
+
+{
+  "orderId": "outbox-{{run}}-paid",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 2,
+  "unitPrice": 10,
+  "failAt": "NONE"
+}
+
+### A8. 确认重复消费没有再次扣减
+GET {{base}}/api/outbox/state
+
+### B1. 本地消息落库后、提交前故障，预期 409
+POST {{base}}/api/outbox/orders
+Content-Type: application/json
+
+{
+  "orderId": "outbox-{{run}}-local-fail",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "AFTER_ACCOUNT"
+}
+
+### B2. 确认 local-fail 没有任务
+GET {{base}}/api/outbox/tasks
+
+### B3. 确认 local-fail 没有订单，余额和库存不变
+GET {{base}}/api/outbox/state
+
+### C1. 余额不足场景
+# 前提余额小于 1000000，且库存至少 1
+POST {{base}}/api/outbox/orders
+Content-Type: application/json
+
+{
+  "orderId": "outbox-{{run}}-rejected",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 1000000,
+  "failAt": "NONE"
+}
+
+### C2. 等待 rejected 任务 DONE / REJECTED
+GET {{base}}/api/outbox/tasks
+
+### C3. 核对取消订单，库存释放、余额不变
+# 相对于本轮最初基线，仍为 B-10 / S-1
+GET {{base}}/api/outbox/state
+
+### C4. 查询扣款拒绝回执 REJECTED
+GET {{base}}/api/outbox/receipts/outbox-{{run}}-rejected
+
+### D1. 模拟接收端持续失败
+POST {{base}}/demo/faults?failNext=100
+
+### D2. 创建将进入死信的订单
+POST {{base}}/api/outbox/orders
+Content-Type: application/json
+
+{
+  "orderId": "outbox-{{run}}-dead",
+  "userId": "U1001",
+  "productId": "SKU-001",
+  "quantity": 1,
+  "unitPrice": 10,
+  "failAt": "NONE"
+}
+
+### D3. 等待 dead 任务进入 DEAD
+# 按 README 配置最多 3 次领取可快速验证
+GET {{base}}/api/outbox/tasks
+
+### D4. 查询接收端回执，应为 NOT_FOUND
+GET {{base}}/api/outbox/receipts/outbox-{{run}}-dead
+
+### D5. 死信时订单仍 PENDING，余额 B-10，库存 S-2
+GET {{base}}/api/outbox/state
+
+### D6. 接收端恢复，清零故障
+POST {{base}}/demo/faults
+
+### D7. 使用原事件编号重放 DEAD 任务
+POST {{base}}/api/outbox/tasks/outbox-{{run}}-dead/replay
+
+### D8. 等待 dead 任务 DONE / PAID
+GET {{base}}/api/outbox/tasks
+
+### D9. 最终余额 B-20、库存 S-2，dead 订单 PAID
+GET {{base}}/api/outbox/state
+
+### D10. 查询接收端最终回执 PAID
+GET {{base}}/api/outbox/receipts/outbox-{{run}}-dead
