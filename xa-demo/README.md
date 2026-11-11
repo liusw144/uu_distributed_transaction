@@ -4,7 +4,7 @@
 
 ## 1. 启动条件
 
-先完成[根 README 的数据库和环境变量配置](../README.md)。在 PG 执行：
+先完成[根 README 的数据库初始化](../README.md)。在 PG 执行：
 
 ```sql
 SHOW max_prepared_transactions;
@@ -20,7 +20,9 @@ ALTER SYSTEM SET max_prepared_transactions = 100;
 
 ## 2. 直接运行服务
 
-IDEA 运行 `cn.demo.xa.XaApplication`，Working directory 为项目根目录，填写公共六项数据库环境变量，无需额外 Program arguments。
+IDEA 选择 JDK 17，直接运行 `cn.demo.xa.XaApplication`，Working directory
+为项目根目录。连接读取 [application.yml](src/main/resources/application.yml) 的 `demo.datasource`：MySQL `3308 root/root`
+、PG `5432 postgres/postgres`，无需环境变量或 Program arguments；修改连接直接编辑 YAML。Atomikos 仍使用原生 XADataSource。
 
 或在根目录直接运行已打包的 jar：
 
@@ -83,7 +85,7 @@ IDEA 直接运行 XaScenarioTest，环境变量使用公共六项，并增加 DE
 也可在根目录执行：
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl xa-demo -am "-Dtest=XaScenarioTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl xa-demo -am "-Dtest=XaScenarioTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 测试使用独立随机业务号和测试行，结束后清理。运行前停止 XaApplication。
@@ -91,3 +93,9 @@ mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl xa-dem
 ## 6. 恢复日志
 
 应用日志目录为根目录下 .runtime/xa-logs，测试使用本模块 target/xa-test-logs。崩溃恢复时保留相同日志目录、管理器名和资源名；本配置只启动一个 XA 应用实例。HTTP 场景验证业务异常回滚，不等同于验证进程断电恢复。
+
+## 已验证范围
+
+2026-11-11 最近一次业务代码验收：本模块 2 个 Java 测试通过。Atomikos 两库提交及异常回滚；无数据库环境变量直接运行主类通过。
+
+公共环境、Seata Server 配置及全项目验收汇总见[根 README](../README.md)。

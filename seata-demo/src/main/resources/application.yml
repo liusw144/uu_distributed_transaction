@@ -7,6 +7,21 @@ spring:
 demo:
   datasource:
     mode: at
+    # 本机连接可直接使用；更换账号时修改本文件，环境变量覆盖为可选项。
+    mysql:
+      jdbc-url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3308/dtx_demo_mysql?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true}
+      username: ${MYSQL_USER:root}
+      password: ${MYSQL_PASSWORD:root}
+      maximum-pool-size: 8
+      minimum-idle: 1
+      connection-timeout: 5000
+    postgresql:
+      jdbc-url: ${PG_URL:jdbc:postgresql://127.0.0.1:5432/dtx_demo_pg}
+      username: ${PG_USER:postgres}
+      password: ${PG_PASSWORD:postgres}
+      maximum-pool-size: 8
+      minimum-idle: 1
+      connection-timeout: 5000
   role: ${DEMO_ROLE:order}
   stock-url: ${AT_STOCK_URL:http://127.0.0.1:8084/internal/stock}
   account-url: ${AT_ACCOUNT_URL:http://127.0.0.1:8085/internal/account}
@@ -29,4 +44,4 @@ seata:
       log-serialization: jackson
 logging:
   level:
-    org.apache.seata: INFO
+    io.seata: INFO

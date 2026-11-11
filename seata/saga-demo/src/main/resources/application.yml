@@ -1,0 +1,32 @@
+server:
+  address: 127.0.0.1
+  port: 8104
+spring:
+  application:
+    name: seata-saga-demo
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+demo:
+  datasource:
+    # 本机连接可直接使用；更换账号时修改本文件，环境变量覆盖为可选项。
+    mysql:
+      jdbc-url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3308/dtx_demo_mysql?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true}
+      username: ${MYSQL_USER:root}
+      password: ${MYSQL_PASSWORD:root}
+      maximum-pool-size: 8
+      minimum-idle: 1
+      connection-timeout: 5000
+    postgresql:
+      jdbc-url: ${PG_URL:jdbc:postgresql://127.0.0.1:5432/dtx_demo_pg}
+      username: ${PG_USER:postgres}
+      password: ${PG_PASSWORD:postgres}
+      maximum-pool-size: 8
+      minimum-idle: 1
+      connection-timeout: 5000
+# 此模块直接配置官方持久化引擎，不启动 AT 自动代理或 TC 客户端。
+seata:
+  enabled: false
+  enable-auto-data-source-proxy: false
+logging:
+  level:
+    io.seata: WARN

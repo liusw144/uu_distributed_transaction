@@ -4,7 +4,9 @@
 
 ## 1. 直接运行服务
 
-完成[公共数据库和环境配置](../README.md)，IDEA 运行 `cn.demo.notification.NotificationApplication`。Working directory 为项目根目录，为快速观察重试和死信，Program arguments 填写：
+完成[公共数据库初始化](../README.md)，IDEA 选择 JDK 17，直接运行 `cn.demo.notification.NotificationApplication`，Working
+directory 为项目根目录。连接读取 [application.yml](src/main/resources/application.yml) 的 `demo.datasource`：MySQL
+`3308 root/root`、PG `5432 postgres/postgres`，无需数据库环境变量。以下 Program arguments 仅用于快速观察重试和死信，可选：
 
 ```text
 --demo.retry.max-attempts=3 --demo.retry.base-seconds=1 --demo.retry.max-seconds=2
@@ -87,7 +89,14 @@ C、D 两组中 DEAD 阶段的差别是有没有接收端回执；两组最终�
 - localFailureRollsBackPaymentAndNotificationTogether：业务异常后订单与通知任务全部回滚。
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl notification-demo -am "-Dtest=NotificationScenarioTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl notification-demo -am "-Dtest=NotificationScenarioTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 HTTP 场景覆盖真实后台重试与死信，JUnit 验证本地事务和幂等回执；公共模块的 DatabaseContractTest 还覆盖租约过期和迟到工作者隔离。
+
+## 已验证范围
+
+2026-11-11 最近一次业务代码验收：本模块 2 个 Java 测试通过。支付事实与通知任务原子落库、回执幂等；无数据库环境变量启动、MySQL
+state 与 PostgreSQL receipts 查询通过。
+
+公共环境、Seata Server 配置及全项目验收汇总见[根 README](../README.md)。
