@@ -1,4 +1,12 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><parent><groupId>cn.demo</groupId><artifactId>distributed-transactions</artifactId><version>1.0.0</version></parent><artifactId>seata-demo</artifactId>
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>cn.demo</groupId>
+        <artifactId>distributed-transactions</artifactId>
+        <version>1.0.0</version>
+    </parent>
+    <artifactId>seata-demo</artifactId>
     <dependencies>
         <dependency>
             <groupId>cn.demo</groupId>
@@ -11,4 +19,12 @@
             <version>${seata.version}</version>
         </dependency>
     </dependencies>
-<build><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins></build></project>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

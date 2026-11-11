@@ -7,12 +7,10 @@
 完成[公共数据库初始化](../README.md)，确认两库已执行 SQL，包含 undo_log 表。PG 的 undo_log 必须包含 id 和
 undo_log_id_seq，不能直接照搬 MySQL 表结构。
 
-客户端现已统一为 io.seata:seata-spring-boot-starter:2.0.0。IDEA 打开源码 D:/workspace/incubator-seata，选择 **Seata Server
-2.0 DB** 配置，直接运行 io.seata.server.ServerApplication。源码已配置 MySQL 的 seata_tc_200
-协调库；完整步骤见 [根目录的 Seata Server 配置](../README.md#seata-server)。
+客户端现已统一为 io.seata:seata-spring-boot-starter:2.0.0。按根 README 配置 Seata 2.0.0 源码的 DB 存储，并在 IDEA 直接运行 io.seata.server.ServerApplication。TC 使用独立 MySQL 协调库 seata_tc_200；完整步骤见 [根目录的 Seata Server 配置](../README.md#seata-server)。
 
 日志出现 session / lock store mode: db 与 service listen port: 8091 后再启动业务服务。控制台为 http://127.0.0.1:7091，账号
-seata/seata；事务协调地址为 127.0.0.1:8091。DB 模式恢复依赖 TC 库，不再使用旧 .runtime/seata 的 2.2.0 file 模式发行包。
+seata/seata；事务协调地址为 127.0.0.1:8091。DB 模式恢复依赖 TC 库。
 
 ## 2. IDEA 启动三个独立进程
 

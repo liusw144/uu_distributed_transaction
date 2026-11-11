@@ -32,8 +32,6 @@ TC 协调表或业务分支表。
 `5432 postgres/postgres`，修改连接直接编辑 YAML。无需配置数据库环境变量，原 application.properties 已迁移至 YAML。
 
 ```powershell
-$env:JAVA_HOME='D:/software/java/jdk17/jdk17.0.15_6'
-$env:PATH="$env:JAVA_HOME/bin;D:/software/apache-maven-3.9.12/bin;$env:PATH"
 mvn -B -s .mvn/settings.xml '-Dmaven.repo.local=.runtime/m2' -pl seata/tcc-demo -am install -DskipTests
 mvn -B -s .mvn/settings.xml '-Dmaven.repo.local=.runtime/m2' -f seata/tcc-demo/pom.xml spring-boot:run
 ```

@@ -1,50 +1,64 @@
 package cn.demo.seata.xa;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import cn.demo.common.BusinessException;
 import cn.demo.common.Purchase;
-import org.junit.jupiter.api.*;
+import io.seata.core.context.RootContext;
+import io.seata.rm.datasource.xa.DataSourceProxyXA;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.UUID;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
-import org.springframework.core.io.ClassPathResource;
-import io.seata.core.context.RootContext;
-import io.seata.rm.datasource.xa.DataSourceProxyXA;
-
-import javax.sql.DataSource;
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.awaitility.Awaitility.await;
 
 /**
  * 真正连接本机 TC 与两个数据库；用原始连接读取，避免代理缓存掩盖结果。
+ *
+ * @author liusw144
  */
 @EnabledIfEnvironmentVariable(named = "DEMO_SEATA_TESTS", matches = "true")
 @SpringBootTest(classes = SeataXaApplication.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class XaIntegrationTest {
+
     @Autowired
     XaOrderService service;
+
     @Autowired
     @Qualifier("rawMysql")
     DataSource rawMysql;
+
     @Autowired
     @Qualifier("rawPg")
     DataSource rawPg;
+
     @Autowired
     @Qualifier("mysqlDataSource")
     DataSource mysqlProxy;
+
     @Autowired
     @Qualifier("pgDataSource")
     DataSource pgProxy;
+
     JdbcTemplate mysql, pg;
+
     String id;
 
     @BeforeEach
@@ -73,9 +87,12 @@ class XaIntegrationTest {
 
     void assertResources(int stock, String balance, int orders) {
         await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> {
-            assertEquals(stock, mysql.queryForObject("SELECT available FROM demo_stock WHERE id=?", Integer.class, "SEATA_XA:" + id));
-            assertEquals(new BigDecimal(balance), pg.queryForObject("SELECT balance FROM demo_accounts WHERE id=?", BigDecimal.class, "SEATA_XA:" + id));
-            assertEquals(orders, mysql.queryForObject("SELECT COUNT(*) FROM demo_orders WHERE order_id=?", Integer.class, id));
+            assertEquals(stock, mysql.queryForObject("SELECT available FROM demo_stock WHERE id=?", Integer.class,
+                    "SEATA_XA:" + id));
+            assertEquals(new BigDecimal(balance), pg.queryForObject("SELECT balance FROM demo_accounts WHERE id=?",
+                    BigDecimal.class, "SEATA_XA:" + id));
+            assertEquals(orders,
+                    mysql.queryForObject("SELECT COUNT(*) FROM demo_orders WHERE order_id=?", Integer.class, id));
         });
     }
 
@@ -106,14 +123,16 @@ class XaIntegrationTest {
     @Test
     void accountShortageRollsBackPreviouslyPreparedMysql() {
         pg.update("UPDATE demo_accounts SET balance=1.00 WHERE id=?", "SEATA_XA:" + id);
-        assertThatThrownBy(() -> service.purchase(purchase(Purchase.Failure.NONE))).hasRootCauseInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> service.purchase(purchase(Purchase.Failure.NONE)))
+                .hasRootCauseInstanceOf(BusinessException.class);
         assertResources(10, "1.00", 0);
     }
 
     @Test
     void stockShortageCannotCreateOrderOrDebitAccount() {
         mysql.update("UPDATE demo_stock SET available=1 WHERE id=?", "SEATA_XA:" + id);
-        assertThatThrownBy(() -> service.purchase(purchase(Purchase.Failure.NONE))).hasRootCauseInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> service.purchase(purchase(Purchase.Failure.NONE)))
+                .hasRootCauseInstanceOf(BusinessException.class);
         assertResources(1, "100.00", 0);
     }
 
@@ -127,4 +146,3 @@ class XaIntegrationTest {
         assertResources(8, "80.00", 1);
     }
 }
-

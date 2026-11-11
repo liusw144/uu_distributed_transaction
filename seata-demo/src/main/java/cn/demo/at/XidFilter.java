@@ -1,23 +1,37 @@
 package cn.demo.at;
 
 import io.seata.core.context.RootContext;
-import jakarta.servlet.*;
-import jakarta.servlet.http.*;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import java.io.IOException;
 
+/**
+ * 从 HTTP 头绑定 Seata XID，并在请求结束后恢复线程原有的事务上下文。
+ *
+ * @author liusw144
+ */
 @Component
 public class XidFilter extends OncePerRequestFilter {
-    @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain) throws ServletException,IOException {
-        String xid=request.getHeader(RootContext.KEY_XID);
-        String previous=RootContext.getXID();
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+            throws ServletException, IOException {
+        String xid = request.getHeader(RootContext.KEY_XID);
+        String previousXid = RootContext.getXID();
         try {
-            if(xid!=null && !xid.isBlank()) RootContext.bind(xid);
-            chain.doFilter(request,response);
+            if (xid != null && !xid.isBlank()) {
+                RootContext.bind(xid);
+            }
+            chain.doFilter(request, response);
         } finally {
             // Servlet 工作线程会被复用，异常路径也必须清理，否则下一请求会加入旧事务。
-            RootContext.unbind();if(previous!=null) RootContext.bind(previous);
+            RootContext.unbind();
+            if (previousXid != null) {
+                RootContext.bind(previousXid);
+            }
         }
     }
 }

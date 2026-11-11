@@ -1,1 +1,10 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><parent><groupId>cn.demo</groupId><artifactId>distributed-transactions</artifactId><version>1.0.0</version></parent><artifactId>common</artifactId></project>
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>cn.demo</groupId>
+        <artifactId>distributed-transactions</artifactId>
+        <version>1.0.0</version>
+    </parent>
+    <artifactId>common</artifactId>
+</project>

@@ -1,8 +1,19 @@
 package cn.demo.common;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * 验证RetryPolicy的事务行为与边界条件。
+ *
+ * @author liusw144
+ */
 class RetryPolicyTest {
-    @Test void exponentialBackoffIsBoundedAndLastFailureIsDead() {
+
+    @Test
+    void exponentialBackoffIsBoundedAndLastFailureIsDead() {
         var retry = new RetryPolicy(4, 2, 10);
         assertEquals(2, retry.delaySeconds(1));
         assertEquals(4, retry.delaySeconds(2));

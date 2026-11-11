@@ -1,7 +1,12 @@
-# 分布式事务 Demo：整体说明
+# 分布式事务 Demo
+
+[![Java quality and unit tests](https://github.com/liusw144/uu_distributed_transaction/actions/workflows/verify.yml/badge.svg)](https://github.com/liusw144/uu_distributed_transaction/actions/workflows/verify.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 使用 JDK 17、Spring Boot 3.3.13、MySQL 8.0、PostgreSQL、Atomikos 6.0.0 和 Seata 2.0.0，以订单、账户、库存和通知演示六类一致性方案。工程包含原有六个示例及
 Seata 四种官方模式，所有服务均从各自 application.yml 读取本机连接，直接运行主类。
+
+构建要求 Maven 3.9+；运行前用 `mvn -version` 确认 Maven 使用 JDK 17。
 
 本页汇总公共环境、方案比较、Seata 服务端和全量验证；每个服务仅保留一份 README，集中说明本服务的原理、启动、HTTP 请求、SQL 和测试。
 
@@ -11,6 +16,7 @@ Seata 四种官方模式，所有服务均从各自 application.yml 读取本机
 - [Seata Server 源码 DB 配置](#seata-server)
 - [方案比较与其他扩展](#patterns)
 - [验收结果](#verification)
+- [代码规范、贡献与许可证](#contributing)
 
 <a id="modules"></a>
 
@@ -90,7 +96,7 @@ TCC 和 Saga 使用单进程跨两库的显式教学协调器，包含持久化�
 ## IDEA 直接启动主类
 
 1. 打开根 pom.xml，将项目 SDK、Maven Runner JRE、运行配置 JRE 都设为 JDK 17。
-2. 每个 Application 的 **Working directory** 统一设置为 `D:\self\uu_distributed_transaction`。
+2. 每个 Application 的 **Working directory** 统一设置为 `仓库根目录`。
 3. 直接点击对应主类的 main 运行。各模块的 `src/main/resources/application.yml` 已配置本机连接：MySQL `3308 root/root`
    ，PostgreSQL `5432 postgres/postgres`，无需额外环境变量或专用启动配置。
 4. 修改连接时编辑对应模块 YAML 的 `demo.datasource.mysql` / `demo.datasource.postgresql`。原三服务 AT
@@ -113,8 +119,17 @@ PG_PASSWORD=postgres
 
 ## 构建与直接启动
 
-Maven 仓库配置统一放在 [.mvn/settings.xml](.mvn/settings.xml)，两个工程的 `.mvn/maven.config` 已同步引用；旧 scripts
-目录和本地配置脚本模板已移除。
+首次使用：
+
+```text
+git clone https://github.com/liusw144/uu_distributed_transaction.git
+cd uu_distributed_transaction
+mvn -B verify
+```
+
+这条命令执行格式、静态检查和无外部依赖的单元测试；真实数据库及 TC 测试默认按开关跳过。初始化两库后按各服务 README 直接运行主类。
+
+Maven 仓库配置统一放在 [.mvn/settings.xml](.mvn/settings.xml)，本工程 `.mvn/maven.config` 使用相对路径和项目内依赖缓存。请从仓库根目录运行 Maven，子模块使用 `-pl` 或 `-f` 选择；不需要 scripts 目录。
 
 在根目录用 JDK 17 执行 Maven，无需运行脚本文件：
 
@@ -171,12 +186,11 @@ Saga 恢复。
 
 ## Seata Server：源码与 DB 模式
 
-服务端源码位于 D:/workspace/incubator-seata，与 Demo 分属两个 Maven 工程；当前双方版本均为 2.0.0。
+先检出 Apache Seata 2.0.0 源码，与 Demo 分别导入 IDEA。下文用 `<demo-root>` 表示本仓库根目录，`<seata-source>` 表示你检出的 Seata 源码根目录；两者均按实际路径替换，当前客户端和服务端版本统一为 2.0.0。
 
 ### 源码中的直接配置
 
-以下内容已经写入 `D:/workspace/incubator-seata/server/src/main/resources/application.yml`。默认启动即为 DB 模式，无需启用额外
-profile：
+在 `<seata-source>/server/src/main/resources/application.yml` 配置以下关键参数，使默认启动使用 DB 模式；配置时保留源码原有的控制台和安全参数：
 
 ```yaml
 server:
@@ -209,49 +223,44 @@ seata:
 ```
 
 `config.type` 和 `registry.type` 仍为 file：分别表示本地配置和客户端静态寻址；`store.mode=db` 才是 TC 数据库存储，不要把前两项也改成
-db。此处 root/root 是用户提供的本机演示账号。
+db。此处 root/root 仅是本地演示默认账号。
 
-原 `application-local.yml` 仍可用于固定本机日志路径，但已删除其中 `store.mode=file` 的覆盖，启用 local 时同样继承主配置的
-DB 模式。控制台账号沿用 seata/seata。
+`application-local.yml` 可选；如使用它，请避免用 `store.mode=file` 覆盖主配置。控制台示例账号为 seata/seata。
 
-### 已初始化的 TC 数据库
+### 初始化 TC 数据库
 
-已在 MySQL 8.0.46（127.0.0.1:3308）创建 `seata_tc_200`，并首次执行本份源码的 `script/server/db/mysql.sql`。当前包含：
+在 MySQL 创建 `seata_tc_200`，首次执行对应版本源码的 `script/server/db/mysql.sql`，包含以下表：
 
 | 表                | 用途                    |
 |------------------|-----------------------|
 | global_table     | 全局事务状态                |
 | branch_table     | 分支事务状态                |
 | lock_table       | AT 全局锁                |
-| distributed_lock | TC 恢复任务的分布式锁，已初始化四条记录 |
+| distributed_lock | TC 恢复任务的分布式锁，需插入源码 SQL 的四条初始记录 |
 
 TC 库与 `dtx_demo_mysql` / `dtx_demo_pg` 两个业务库分开。AT 的 undo_log 仍在各业务库，Saga 引擎表仍在业务演示库。源码 SQL
 的四条 distributed_lock INSERT 用于首次初始化；已有库无需重复插入或清空表。
 
-源码 `server/pom.xml` 原依赖旧版驱动，现已显式使用 `mysql-connector-java:8.0.27`，匹配 `com.mysql.cj.jdbc.Driver`。IDEA
-修改后需要 Reload Maven。
+源码 `server/pom.xml` 需提供 MySQL 8 驱动，例如 `mysql-connector-java:8.0.27`，匹配 `com.mysql.cj.jdbc.Driver`。修改后 Reload Maven。
 
 ### IDEA 直接运行（客户端和服务端均为 2.0.0）
 
 本地 Demo 已统一为 `io.seata:seata-spring-boot-starter:2.0.0`，API 包名也同步为 `io.seata.*`。五个 Seata 客户端模块均继承根
 pom.xml 的 seata.version=2.0.0。
 
-源码已经提供 `.run/Seata Server 2.0 DB.run.xml`。IDEA 导入源码根 pom.xml 并 Reload Maven 后，直接选择 **Seata Server 2.0
-DB** 点击 Run。配置内容为：
+IDEA 导入源码根 pom.xml 并 Reload Maven，直接运行服务端主类，或按下表建立 Application 配置：
 
 | 设置                      | 本机值                                           |
 |-------------------------|-----------------------------------------------|
 | Main class              | io.seata.server.ServerApplication             |
 | Use classpath of module | server / seata-server                         |
-| Working directory       | D:/workspace/incubator-seata                  |
+| Working directory       | <seata-source>                  |
 | JRE                     | JDK 17（源码编译级别保持其 POM 的 1.8）                   |
 | VM options              | 可留空；需要本机日志路径时加 -Dspring.profiles.active=local |
 | Environment variables   | SEATA_IP=127.0.0.1;SEATA_PORT=8091            |
 | Program arguments       | 留空                                            |
 
-源码工程 Project SDK 已调整为本机已注册的 JDK 17，Maven 编译级别保持 1.8，运行配置明确使用 JDK 17，并使用参数文件缩短
-Windows classpath。两个工程都新增本机 .mvn/maven.config，指向 HTTPS Maven settings 和已下载的 .runtime/m2；IDEA Maven
-设置中应启用读取 .mvn/maven.config。
+源码工程 Project SDK 和运行 JRE 选择 JDK 17，编译级别保持源码 POM 的 1.8；Windows 可用 ARGS_FILE 缩短命令行。服务端与 Demo 分属不同 Maven 工程，不要复制包含他人绝对路径的运行配置。
 
 若使用 local profile，请放在 VM options：该源码的 ServerRunner 会把 Program arguments 再交给 JCommander；将 Spring 配置参数直接填到
 Program arguments 可能被它判为未知参数。源码的编译级别保持 POM 原值，两者是不同 Maven 工程。
@@ -262,7 +271,7 @@ Run 后日志应显示 session / lock store mode 为 db，以及 `service listen
 也可从源码根目录直接构建，PowerShell 中 -D 参数保留引号：
 
 ```text
-mvn -B -s D:/self/uu_distributed_transaction/.mvn/settings.xml "-Dmaven.repo.local=D:/self/uu_distributed_transaction/.runtime/m2" -pl server -am -Prelease-seata "-Dmaven.test.skip=true" "-Dimage.publish.skip=true" package
+mvn -B -s "<demo-root>/.mvn/settings.xml" "-Dmaven.repo.local=<demo-root>/.runtime/m2" -pl server -am -Prelease-seata "-Dmaven.test.skip=true" "-Dimage.publish.skip=true" package
 ```
 
 上面只用于提前准备依赖和编译；日常从 IDEA 运行主类，无需运行发行包 JAR。构建使用 Java 17，跳过的是 Seata 上游源码自身的完整测试。
@@ -286,8 +295,8 @@ FROM distributed_lock;
 正常结束后前三张表的对应事务记录会被清理；空表本身不表示 DB 模式未生效。可在业务全局事务执行途中暂停，再按 XID 查询。2.0.0 的
 DB 模式全局记录清理可能经过恢复调度延迟；判断业务回滚还应核对实际资源、分支和锁。
 
-本机 Demo 的订单号/资源主键可能超过官方 2.0 SQL 中 pk 的 36 字符，DB 分支注册会报 Data too long for column 'pk'。已将本机
-lock_table.pk 扩至 VARCHAR(128)、row_key 扩至 VARCHAR(512)，源码 SQL 同步修改。现有库若仍是旧宽度，可只执行：
+本机 Demo 的订单号/资源主键可能超过官方 2.0 SQL 中 pk 的 36 字符，DB 分支注册会报 Data too long for column 'pk'。应将
+lock_table.pk 扩至 VARCHAR(128)、row_key 扩至 VARCHAR(512)，并同步自己的初始化 SQL。旧库可以执行：
 
 ```sql
 ALTER TABLE lock_table MODIFY COLUMN row_key VARCHAR (512) NOT NULL,
@@ -421,20 +430,20 @@ JTA 是 Java 事务 API；Atomikos / Narayana 是事务管理器；Seata 是多�
 
 ## 验收结果与运行边界
 
-最近一次业务代码验收（2026-11-11）：**13 个 Maven 模块成功，118 个测试通过，0 失败、0 错误、0 跳过**。其中原有六方案及公共基础
+最近一次规范化回归（2026-11-12）：**13 个 Maven 模块成功，118 个测试通过，0 失败、0 错误、0 跳过**。其中原有六方案及公共基础
 82 个测试，Seata AT 8、XA 8、TCC 9、Saga 11。
+
+本轮同时通过统一格式校验、P3C/PMD 检查（0 违规、0 解析错误）及独立目录干净编译。临时违规样例已验证构建会拒绝通配符导入和缺少大括号的代码，修正样例后检查通过。
 
 | 验证范围               | 已有验收结果                                                                             |
 |--------------------|------------------------------------------------------------------------------------|
-| YAML 主类启动          | 清除数据库等覆盖环境变量、不传应用参数，其余 11 个入口均成功启动并读取两库；Seata XA 沿用此前已通过的直接启动验证                    |
-| Seata 2.0.0 HTTP   | 四模式 AT 12、XA 12、TCC 17、Saga 20，共 61 个场景通过；三服务 AT 另有 10 个请求通过                       |
-| 手写 TCC / Saga HTTP | 分别 20 / 25 个场景通过，包括确认、取消、丢 ACK、补偿及人工恢复                                             |
+| YAML 主类启动          | 本轮 12 个入口均在清除数据库环境变量后成功启动并读两库；XA 临时使用 18102 验证，以保留已有的 8102 进程，其余使用默认端口 |
+| Seata 2.0.0 HTTP   | 本轮四模式 AT 12、XA 12、TCC 17、Saga 20，共 61 个场景通过；此前三服务 AT 另有 10 个请求通过 |
+| 手写 TCC / Saga HTTP | 此前分别 20 / 25 个场景通过，包括确认、取消、丢 ACK、补偿及人工恢复 |
 | TC DB 存储           | AT 事务途中观察到 1 条全局事务、2 条分支、3 条锁；全局回滚后两库恢复，协调记录清理                                     |
 | 实际进程重启恢复           | TC 与 Seata TCC 客户端中断后，从 DB 继续 Confirm；Saga 重启后从失败补偿实例恢复且不重复退款；手写协调器也已验证实际 JVM 重启恢复 |
 
-这些结果为上述验收时点的记录，不代表服务持续运行。本次仅整理文档，未重新执行业务集成测试。本机证据在忽略目录
-.runtime/：yaml-startup-verify.log、yaml-startup-smoke.log、seata-200-http.log、seata-200-legacy-http.log、seata-200-restart.log、more-patterns-http.log、more-patterns-restart.log；JUnit
-报告在各模块 target/surefire-reports。
+这些结果为验收时点的记录，不代表服务持续运行；TC DB 存储和进程重启两行保留此前故障演练结果。本轮日志在忽略目录 `.runtime/`：`alibaba-final-verify.log`、`alibaba-startup-http.log`、`alibaba-portability-final.log`；此前恢复日志为 `seata-200-restart.log`、`more-patterns-restart.log`。JUnit 报告位于各模块 `target/surefire-reports`。
 
 应用只监听 127.0.0.1，演示接口没有登录认证。金额使用 BigDecimal，库存、余额采用条件 UPDATE。两库 state
 查询是观察快照，不提供跨库原子读，异步回滚时等待 TC 重试和最终分支状态。成功验证会消耗库存与余额，每轮重新读取基线。
@@ -444,3 +453,21 @@ MQ 发送。
 
 未验证生产高可用、吞吐、数据库断电及所有网络分区时序。Saga 恢复接口仅支持已停止的失败补偿，任意正向位置中断需要另行诊断。各服务的更具体边界、恢复步骤和验证
 SQL 保留在对应 README。
+
+<a id="contributing"></a>
+
+## 代码规范、贡献与许可证
+
+代码以[阿里巴巴 Java 开发手册 / P3C](https://github.com/alibaba/p3c)为规范依据：四空格缩进、120 字符行宽、显式导入、语义化命名、分支大括号、中文类及接口文档、异常保留上下文。Java 17 的 record 和 var 可正常使用，事务边界及演示 HTTP 契约保持稳定。
+
+- `config/java-formatter.xml`：项目统一排版，由 `formatter-maven-plugin` 执行；运行 `mvn -B formatter:format` 后再提交。
+- `config/pmd-ruleset.xml`：阿里 P3C 全部分组规则及显式导入检查，由兼容 Java 17 的 PMD 6.55 执行。`mvn -B verify` 会阻止格式或规则违规。
+- 兼容说明：旧 P3C 的默认分支检查由 PMD 的等价规则替代；少数 `switch` 表达式使用等值语句写法，避免旧数据流分析器报错，保留全部检查。
+- `.editorconfig` / `.gitattributes`：统一 UTF-8、LF 和缩进，避免不同 IDE 反复改写文件。
+- GitHub Actions 默认执行格式、P3C 和单元测试；未提供数据库与 TC，所以相应集成测试会显示 skipped。完整真实事务测试按本页的三个环境开关运行，不能把 CI 基础检查等同于完整故障验收。
+
+提交改动请从独立分支发起 Pull Request，说明变更目的、验证命令与事务行为影响。事务修复应覆盖提交、回滚、幂等及重试场景；保持模块 README 与 requests.http 同步。文档仍按根目录一份总说明、每服务一份 README 组织。
+
+YAML 中 root/root、postgres/postgres 等是公开的本地演示默认值。真实账号使用环境变量或被忽略的 application-local.yml，不要提交生产凭据、密钥、日志和数据库数据。演示接口仅用于本机学习。
+
+本项目源代码采用 [MIT License](LICENSE)。Spring Boot、Seata、Atomikos、数据库驱动及构建工具遵循各自许可证；本项目不代表阿里巴巴或 Apache Seata 官方产品。

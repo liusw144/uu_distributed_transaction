@@ -3,12 +3,20 @@ package cn.demo.at;
 import org.springframework.boot.SpringApplication;
 
 /**
- * IDEA 直接运行此主类，自动加载 application-account.yml，启动账户分支服务。
+ * 加载账户服务配置，启动 Seata AT 账户分支。
+ *
+ * @author liusw144
  */
 public class SeataAccountApplication {
+    /**
+     * 使用对应分支配置启动服务。
+     *
+     * @param args
+     *            命令行参数
+     */
     public static void main(String[] args) {
-        var app = new SpringApplication(SeataApplication.class);
-        app.setAdditionalProfiles("account");
-        app.run(args);
+        var application = new SpringApplication(SeataApplication.class);
+        application.setAdditionalProfiles("account");
+        application.run(args);
     }
 }

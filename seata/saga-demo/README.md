@@ -19,8 +19,6 @@ root / postgres，修改连接直接编辑 YAML，无需数据库环境变量。
 从仓库根目录打开 Windows CMD（下列是直接命令，不需要 ps1）：
 
 ```bat
-set JAVA_HOME=D:\software\java\jdk17\jdk17.0.15_6
-set PATH=%JAVA_HOME%\bin;%PATH%
 mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/saga-demo -am package
 java -jar seata/saga-demo/target/seata-saga-demo-1.0.0.jar
 ```

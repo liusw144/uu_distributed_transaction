@@ -1,17 +1,31 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.3.13</version>
-        <relativePath/>
+        <relativePath />
     </parent>
     <groupId>cn.demo</groupId>
     <artifactId>distributed-transactions</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
+    <name>Distributed Transaction Demos</name>
+    <description>Spring Boot examples of XA, Outbox, AT, TCC, Saga and best-effort notification.</description>
+    <url>https://github.com/liusw144/uu_distributed_transaction</url>
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/license/mit/</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <scm>
+        <connection>scm:git:https://github.com/liusw144/uu_distributed_transaction.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/liusw144/uu_distributed_transaction.git</developerConnection>
+        <url>https://github.com/liusw144/uu_distributed_transaction</url>
+    </scm>
     <modules>
         <module>common</module>
         <module>xa-demo</module>
@@ -26,6 +40,9 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <seata.version>2.0.0</seata.version>
+        <formatter.version>2.29.0</formatter.version>
+        <pmd.plugin.version>3.21.2</pmd.plugin.version>
+        <p3c.version>2.1.1</p3c.version>
     </properties>
     <dependencies>
         <dependency>
@@ -54,4 +71,60 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>net.revelc.code.formatter</groupId>
+                <artifactId>formatter-maven-plugin</artifactId>
+                <version>${formatter.version}</version>
+                <configuration>
+                    <configFile>${maven.multiModuleProjectDirectory}/config/java-formatter.xml</configFile>
+                    <encoding>UTF-8</encoding>
+                    <lineEnding>LF</lineEnding>
+                    <compilerSource>17</compilerSource>
+                    <compilerCompliance>17</compilerCompliance>
+                    <compilerTargetPlatform>17</compilerTargetPlatform>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>validate-java-format</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>validate</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>${pmd.plugin.version}</version>
+                <configuration>
+                    <targetJdk>17</targetJdk>
+                    <includeTests>true</includeTests>
+                    <printFailingErrors>true</printFailingErrors>
+                    <linkXRef>false</linkXRef>
+                    <rulesets>
+                        <ruleset>${maven.multiModuleProjectDirectory}/config/pmd-ruleset.xml</ruleset>
+                    </rulesets>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.alibaba.p3c</groupId>
+                        <artifactId>p3c-pmd</artifactId>
+                        <version>${p3c.version}</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>alibaba-guidelines</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

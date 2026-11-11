@@ -1,14 +1,16 @@
 package cn.demo.common;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 /**
  * 不建立网络连接，验证 YAML 配置被使用，并保留原有程序化环境变量入口。
+ *
+ * @author liusw144
  */
 class DatabaseFactoryTest {
+
     @Test
     void mysqlUsesYamlConnectionAndPoolOptions() {
         var env = new MockEnvironment()

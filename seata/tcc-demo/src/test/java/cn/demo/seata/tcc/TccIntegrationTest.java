@@ -1,40 +1,54 @@
 package cn.demo.seata.tcc;
 
-import cn.demo.common.Purchase;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 import cn.demo.common.BusinessException;
+import cn.demo.common.Purchase;
 import io.seata.rm.tcc.api.BusinessActionContext;
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.beans.factory.annotation.Qualifier;
-
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-import static org.assertj.core.api.Assertions.*;
-
+/**
+ * 验证TccIntegration的事务行为与边界条件。
+ *
+ * @author liusw144
+ */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @EnabledIfEnvironmentVariable(named = "DEMO_SEATA_TESTS", matches = "true")
 class TccIntegrationTest {
+
     @Autowired
     TccService service;
+
     @Autowired
     TccStore store;
+
     @Autowired
     OrderAction order;
+
     @Autowired
     AccountAction account;
+
     @Autowired
     PhaseFaults faults;
+
     @Autowired
     @Qualifier("mysqlJdbc")
     JdbcTemplate mysql;
+
     @Autowired
     @Qualifier("pgJdbc")
     JdbcTemplate pg;
+
     String user, product;
 
     @BeforeEach
@@ -47,7 +61,8 @@ class TccIntegrationTest {
     }
 
     Purchase purchase(Purchase.Failure fail) {
-        return new Purchase("o_" + UUID.randomUUID().toString().replace("-", ""), user, product, 2, new BigDecimal("10.00"), fail);
+        return new Purchase("o_" + UUID.randomUUID().toString().replace("-", ""), user, product, 2,
+                new BigDecimal("10.00"), fail);
     }
 
     void await(Runnable assertions) {
@@ -70,10 +85,15 @@ class TccIntegrationTest {
     }
 
     void resources(int stock, String balance) {
-        assertThat(mysql.queryForObject("SELECT available FROM seata_tcc_stock WHERE product_id=?", Integer.class, product)).isEqualTo(stock);
-        assertThat(mysql.queryForObject("SELECT frozen FROM seata_tcc_stock WHERE product_id=?", Integer.class, product)).isZero();
-        assertThat(pg.queryForObject("SELECT available FROM seata_tcc_account WHERE user_id=?", BigDecimal.class, user)).isEqualByComparingTo(balance);
-        assertThat(pg.queryForObject("SELECT frozen FROM seata_tcc_account WHERE user_id=?", BigDecimal.class, user)).isEqualByComparingTo("0");
+        assertThat(mysql.queryForObject("SELECT available FROM seata_tcc_stock WHERE product_id=?", Integer.class,
+                product)).isEqualTo(stock);
+        assertThat(
+                mysql.queryForObject("SELECT frozen FROM seata_tcc_stock WHERE product_id=?", Integer.class, product))
+                .isZero();
+        assertThat(pg.queryForObject("SELECT available FROM seata_tcc_account WHERE user_id=?", BigDecimal.class, user))
+                .isEqualByComparingTo(balance);
+        assertThat(pg.queryForObject("SELECT frozen FROM seata_tcc_account WHERE user_id=?", BigDecimal.class, user))
+                .isEqualByComparingTo("0");
     }
 
     @Test
@@ -83,12 +103,15 @@ class TccIntegrationTest {
         await(() -> resources(18, "980"));
         service.purchase(p);
         resources(18, "980");
-        assertThatThrownBy(() -> service.purchase(new Purchase(p.orderId(), user, product, 3, p.unitPrice(), p.failAt()))).rootCause().isInstanceOf(BusinessException.class).hasMessageContaining("内容冲突");
+        assertThatThrownBy(
+                () -> service.purchase(new Purchase(p.orderId(), user, product, 3, p.unitPrice(), p.failAt())))
+                .rootCause().isInstanceOf(BusinessException.class).hasMessageContaining("内容冲突");
         var b = mysql.queryForMap("SELECT xid,branch_id FROM seata_tcc_order_branch WHERE order_id=?", p.orderId());
         var c = context(b.get("xid").toString(), ((Number) b.get("branch_id")).longValue());
         assertThat(order.confirm(c)).isTrue();
         assertThat(order.cancel(c)).isFalse();
-        var ab = pg.queryForMap("SELECT xid,branch_id,state FROM seata_tcc_account_branch WHERE order_id=?", p.orderId());
+        var ab = pg.queryForMap("SELECT xid,branch_id,state FROM seata_tcc_account_branch WHERE order_id=?",
+                p.orderId());
         assertThat(ab.get("state")).isEqualTo("CONFIRMED");
         var ac = context(ab.get("xid").toString(), ((Number) ab.get("branch_id")).longValue());
         assertThat(account.confirm(ac)).isTrue();
@@ -98,8 +121,10 @@ class TccIntegrationTest {
 
     @Test
     void allFailurePointsCancel() {
-        for (var failure : new Purchase.Failure[]{Purchase.Failure.AFTER_ORDER, Purchase.Failure.AFTER_STOCK, Purchase.Failure.AFTER_ACCOUNT}) {
-            assertThatThrownBy(() -> service.purchase(purchase(failure))).hasRootCauseInstanceOf(BusinessException.class);
+        for (var failure : new Purchase.Failure[]{Purchase.Failure.AFTER_ORDER, Purchase.Failure.AFTER_STOCK,
+                Purchase.Failure.AFTER_ACCOUNT}) {
+            assertThatThrownBy(() -> service.purchase(purchase(failure)))
+                    .hasRootCauseInstanceOf(BusinessException.class);
             await(() -> resources(20, "1000"));
         }
     }
@@ -107,14 +132,16 @@ class TccIntegrationTest {
     @Test
     void insufficientAccountReleasesStock() {
         pg.update("UPDATE seata_tcc_account SET available=1 WHERE user_id=?", user);
-        assertThatThrownBy(() -> service.purchase(purchase(Purchase.Failure.NONE))).hasRootCauseInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> service.purchase(purchase(Purchase.Failure.NONE)))
+                .hasRootCauseInstanceOf(BusinessException.class);
         await(() -> resources(20, "1"));
     }
 
     @Test
     void insufficientStock() {
         mysql.update("UPDATE seata_tcc_stock SET available=1 WHERE product_id=?", product);
-        assertThatThrownBy(() -> service.purchase(purchase(Purchase.Failure.NONE))).hasRootCauseInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> service.purchase(purchase(Purchase.Failure.NONE)))
+                .hasRootCauseInstanceOf(BusinessException.class);
         await(() -> resources(1, "1000"));
     }
 
@@ -159,10 +186,17 @@ class TccIntegrationTest {
         assertThat(store.tryOrder(c, p)).isTrue();
         assertThat(store.tryAccount(c, p)).isTrue();
         assertThat(store.tryAccount(c, p)).isTrue();
-        assertThatThrownBy(() -> store.tryOrder(c, new Purchase(p.orderId(), user, product, 3, p.unitPrice(), p.failAt()))).hasMessageContaining("内容冲突");
-        assertThatThrownBy(() -> store.tryAccount(c, new Purchase(p.orderId(), user, product, 3, p.unitPrice(), p.failAt()))).hasMessageContaining("内容冲突");
-        assertThat(mysql.queryForObject("SELECT frozen FROM seata_tcc_stock WHERE product_id=?", Integer.class, product)).isEqualTo(2);
-        assertThat(pg.queryForObject("SELECT frozen FROM seata_tcc_account WHERE user_id=?", BigDecimal.class, user)).isEqualByComparingTo("20");
+        assertThatThrownBy(
+                () -> store.tryOrder(c, new Purchase(p.orderId(), user, product, 3, p.unitPrice(), p.failAt())))
+                .hasMessageContaining("内容冲突");
+        assertThatThrownBy(
+                () -> store.tryAccount(c, new Purchase(p.orderId(), user, product, 3, p.unitPrice(), p.failAt())))
+                .hasMessageContaining("内容冲突");
+        assertThat(
+                mysql.queryForObject("SELECT frozen FROM seata_tcc_stock WHERE product_id=?", Integer.class, product))
+                .isEqualTo(2);
+        assertThat(pg.queryForObject("SELECT frozen FROM seata_tcc_account WHERE user_id=?", BigDecimal.class, user))
+                .isEqualByComparingTo("20");
         assertThat(order.cancel(c)).isTrue();
         assertThat(order.cancel(c)).isTrue();
         assertThat(account.cancel(c)).isTrue();
@@ -175,8 +209,12 @@ class TccIntegrationTest {
         var p = purchase(Purchase.Failure.AFTER_ACCOUNT);
         assertThatThrownBy(() -> service.purchase(p)).hasRootCauseInstanceOf(BusinessException.class);
         await(() -> resources(20, "1000"));
-        assertThatThrownBy(() -> service.purchase(new Purchase(p.orderId(), user, product, 2, p.unitPrice(), Purchase.Failure.NONE))).rootCause().isInstanceOf(BusinessException.class).hasMessageContaining("已占用");
-        assertThatThrownBy(() -> service.purchase(new Purchase(p.orderId(), user, product, 3, p.unitPrice(), Purchase.Failure.NONE))).rootCause().isInstanceOf(BusinessException.class).hasMessageContaining("内容冲突");
+        assertThatThrownBy(() -> service
+                .purchase(new Purchase(p.orderId(), user, product, 2, p.unitPrice(), Purchase.Failure.NONE)))
+                .rootCause().isInstanceOf(BusinessException.class).hasMessageContaining("已占用");
+        assertThatThrownBy(() -> service
+                .purchase(new Purchase(p.orderId(), user, product, 3, p.unitPrice(), Purchase.Failure.NONE)))
+                .rootCause().isInstanceOf(BusinessException.class).hasMessageContaining("内容冲突");
         resources(20, "1000");
     }
 
@@ -187,4 +225,3 @@ class TccIntegrationTest {
         return c;
     }
 }
-

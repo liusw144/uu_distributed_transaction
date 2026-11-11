@@ -6,11 +6,19 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 
 /**
  * 一个应用中的 MySQL、PostgreSQL 是两个独立事务资源，由真正的 Seata TC 协调。
+ *
+ * @author liusw144
  */
-@SpringBootApplication(scanBasePackages = {"cn.demo.seata.at", "cn.demo.common"}, exclude = DataSourceAutoConfiguration.class)
+@SpringBootApplication(scanBasePackages = {"cn.demo.seata.at", "cn.demo.common"},
+        exclude = DataSourceAutoConfiguration.class)
 public class AtApplication {
+    /**
+     * 启动示例应用。
+     *
+     * @param args
+     *            应用启动参数
+     */
     public static void main(String[] args) {
         SpringApplication.run(AtApplication.class, args);
     }
 }
-
