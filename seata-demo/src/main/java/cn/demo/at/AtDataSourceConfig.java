@@ -1,6 +1,6 @@
 package cn.demo.at;
 import cn.demo.common.DatabaseFactory;
-import org.apache.seata.rm.datasource.DataSourceProxy;
+import io.seata.rm.datasource.DataSourceProxy;
 import org.springframework.context.annotation.*;
 import org.springframework.core.env.Environment;
 import org.springframework.beans.factory.annotation.Qualifier;

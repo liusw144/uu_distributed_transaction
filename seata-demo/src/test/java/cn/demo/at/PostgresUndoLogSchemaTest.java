@@ -1,5 +1,6 @@
 package cn.demo.at;
-import org.apache.seata.rm.datasource.undo.postgresql.PostgresqlUndoLogManager;
+
+import io.seata.rm.datasource.undo.postgresql.PostgresqlUndoLogManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;

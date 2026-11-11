@@ -18,11 +18,14 @@
         <module>outbox-demo</module>
         <module>seata-demo</module>
         <module>notification-demo</module>
+        <module>tcc-demo</module>
+        <module>saga-demo</module>
+        <module>seata</module>
     </modules>
     <properties>
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <seata.version>2.2.0</seata.version>
+        <seata.version>2.0.0</seata.version>
     </properties>
     <dependencies>
         <dependency>

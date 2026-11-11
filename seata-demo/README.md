@@ -6,23 +6,12 @@
 
 完成[公共数据库和环境配置](../README.md)，确认两库已执行 SQL，包含 undo_log 表。PG 的 undo_log 必须包含 id 和 undo_log_id_seq，不能直接照搬 MySQL 表结构。
 
-将官方 Seata Server 2.2.0 二进制包解压至项目根目录的 .runtime/seata，得到：
+客户端现已统一为 io.seata:seata-spring-boot-starter:2.0.0。IDEA 打开源码 D:/workspace/incubator-seata，选择 **Seata Server
+2.0 DB** 配置，直接运行 io.seata.server.ServerApplication。源码已配置 MySQL 的 seata_tc_200
+协调库；完整步骤见 [源码 Server 说明](../seata/server/README.md)。
 
-```text
-.runtime/seata/seata-server/target/seata-server.jar
-.runtime/seata/seata-server/lib/
-.runtime/seata/seata-server/conf/logback-spring.xml
-```
-
-本机之前已安装在该位置时可直接使用。在项目根目录直接执行以下一行命令启动 TC；外部终端使用 JDK 17：
-
-```text
-java -Xms128m -Xmx512m "-Dloader.path=.runtime/seata/seata-server/lib" "-Dlog.home=.runtime/logs/seata" "-Dspring.config.location=file:config/seata-server.yml" "-Dlogging.config=.runtime/seata/seata-server/conf/logback-spring.xml" -jar .runtime/seata/seata-server/target/seata-server.jar -h 127.0.0.1 -p 8091
-```
-
-日志出现 service listen port: 8091 后再启动业务服务。TC 使用 [config/seata-server.yml](../config/seata-server.yml)，控制台为 http://127.0.0.1:7091，账号 seata/seata。自有安装目录可替换上述 jar、lib 和 logback 路径。
-
-TC 工作目录也必须是项目根目录，事务文件保存在 .runtime/seata-data；恢复时保留该目录。
+日志出现 session / lock store mode: db 与 service listen port: 8091 后再启动业务服务。控制台为 http://127.0.0.1:7091，账号
+seata/seata；事务协调地址为 127.0.0.1:8091。DB 模式恢复依赖 TC 库，不再使用旧 .runtime/seata 的 2.2.0 file 模式发行包。
 
 ## 2. IDEA 启动三个独立进程
 

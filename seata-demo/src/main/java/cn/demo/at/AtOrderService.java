@@ -1,7 +1,7 @@
 package cn.demo.at;
 import cn.demo.common.*;
-import org.apache.seata.core.context.RootContext;
-import org.apache.seata.spring.annotation.GlobalTransactional;
+import io.seata.core.context.RootContext;
+import io.seata.spring.annotation.GlobalTransactional;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
