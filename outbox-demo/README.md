@@ -99,3 +99,9 @@ A～D 全部完成后，相对于本轮最初基线，只有 paid 和 dead 两�
 ```text
 mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl outbox-demo -am "-Dtest=OutboxScenarioTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
+
+## 已验证范围
+
+2026-11-11 最近一次业务代码验收：本模块 3 个 Java 测试通过。本地事务回滚、重复消费、业务内容冲突和拒绝扣款后的库存补偿；无数据库环境变量启动及两库读取通过。
+
+公共环境、Seata Server 配置及全项目验收汇总见[根 README](../README.md)。

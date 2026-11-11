@@ -6,7 +6,8 @@ common 的手写 WorkflowEngine。
 
 ## 启动与数据库
 
-先按 [Seata 总入口](../README.md) 准备父 POM/common 和两库。Saga 可独立运行，无需 TC、Nacos、Redis 或 RabbitMQ。
+先按 [根目录说明](../../README.md#seata-server) 准备父 POM/common 和两库。Saga 可独立运行，无需 TC、Nacos、Redis 或
+RabbitMQ。
 
 默认 MySQL `127.0.0.1:3308/dtx_demo_mysql`（root），PostgreSQL `127.0.0.1:5432/dtx_demo_pg`
 （postgres）。连接读取 [application.yml](src/main/resources/application.yml) 的 `demo.datasource`，本机密码已分别配置为
@@ -20,14 +21,15 @@ root / postgres，修改连接直接编辑 YAML，无需数据库环境变量。
 ```bat
 set JAVA_HOME=D:\software\java\jdk17\jdk17.0.15_6
 set PATH=%JAVA_HOME%\bin;%PATH%
-mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -pl seata/saga-demo -am package
+mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/saga-demo -am package
 java -jar seata/saga-demo/target/seata-saga-demo-1.0.0.jar
 ```
 
 也可先从根目录执行
-`mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -pl seata/saga-demo -am install -DskipTests` 安装父
+`mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/saga-demo -am install -DskipTests` 安装父
 POM/common，再用
-`mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -f seata/saga-demo/pom.xml spring-boot:run`。可选环境变量
+`mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -f seata/saga-demo/pom.xml spring-boot:run`
+。可选环境变量
 `MYSQL_URL / MYSQL_USER / MYSQL_PASSWORD`、`PG_URL / PG_USER / PG_PASSWORD` 与 common DatabaseFactory 一致。
 
 IDEA：Maven 导入根 pom，项目 SDK/运行 JRE 选 Java 17；直接运行 `cn.demo.seata.saga.SagaApplication`，工作目录为项目根目录。打开本目录
@@ -88,7 +90,7 @@ SU，不重复退款。故障注入 `?loseAck=true` 则在本地补偿已经提�
 
 ```bat
 set DEMO_SEATA_TESTS=true
-mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -f seata/saga-demo/pom.xml test
+mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -f seata/saga-demo/pom.xml test
 ```
 
 11 个真实两库用例：成功、同 payload 幂等与冲突、三个检查点故障、余额不足、库存不足、成功实例拒绝恢复取消、补偿失败后新建引擎恢复、补偿提交丢响应后的幂等恢复、双独立引擎正向/补偿并发互斥、首节点前中断的持久化
@@ -97,3 +99,10 @@ DbStateMachineConfig，直接验证官方持久化重放路径。
 
 官方参考：[Saga 文档](https://seata.apache.org/docs/v2.0/user/mode/saga/)、[2.0.0 源码](https://github.com/apache/incubator-seata/tree/v2.0.0/saga)
 。实现还核对了 Maven Central 2.0.0 的 seata-saga-engine / seata-saga-spring / seata-saga-engine-store sources.jar。
+
+## 已验证范围
+
+2026-11-11 最近一次业务代码验收：本模块 11 个 Java 测试通过。官方持久化状态机、补偿重试、丢响应幂等、新引擎恢复及并发互斥；20
+个 HTTP 场景通过。实际 JVM 重启后恢复失败补偿，不重复退款。
+
+公共环境、Seata Server 配置及全项目验收汇总见[根 README](../../README.md)。

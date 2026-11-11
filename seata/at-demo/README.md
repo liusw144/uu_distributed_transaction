@@ -14,7 +14,7 @@ Undo Log 恢复。普通数据库查询可能读到第一阶段中间态，写�
 1. 使用 MySQL 8（3308）和 PostgreSQL（5432）。专用库 dtx_demo_mysql / dtx_demo_pg
    应已存在。分别在对应数据库执行本模块 [MySQL SQL](sql/mysql.sql)、[PostgreSQL SQL](sql/postgresql.sql)
    。重复执行不会重置资源；SEATA_AT:SKU-001 初始库存 100，SEATA_AT:U1001 初始余额 10000.00。
-2. 按 [Seata 总入口](../README.md) 直接用 Java 启动 TC，默认 127.0.0.1:8091，不需要 Nacos、Redis 或 RabbitMQ。
+2. 按 [根目录说明](../../README.md#seata-server) 直接用 Java 启动 TC，默认 127.0.0.1:8091，不需要 Nacos、Redis 或 RabbitMQ。
 3. IDEA 选择 JDK 17，直接运行
    cn.demo.seata.at.AtApplication，工作目录为项目根目录。连接读取 [application.yml](src/main/resources/application.yml) 的
    `demo.datasource`：MySQL `3308 root/root`、PG `5432 postgres/postgres`，修改连接直接编辑 YAML，无需数据库环境变量。
@@ -67,10 +67,16 @@ Undo Log 在事务结束后通常会被自动删除，不能用查不到日志�
 TC 与两个数据库须已启动，测试读取本模块 YAML。在 IDEA 运行测试时设置 DEMO_SEATA_TESTS=true；终端可设置同名环境变量后执行：
 
 ```text
-mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -pl seata/at-demo -am test
+mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/at-demo -am test
 ```
 
 测试使用独立业务号与资源，验证实际 Seata 代理、成功、三个故障点、余额不足、库存不足与重复提交。未设置开关时数据库/TC 测试会跳过。
 
 参考：[Seata AT 官方说明](https://seata.apache.org/docs/v2.0/user/mode/at/)。
 
+## 已验证范围
+
+2026-11-11 最近一次业务代码验收：本模块 8 个 Java 测试通过。真实 DataSourceProxy、成功提交、故障回滚及资源不足；12 个 HTTP
+场景和无数据库环境变量启动通过。
+
+公共环境、Seata Server 配置及全项目验收汇总见[根 README](../../README.md)。

@@ -93,3 +93,10 @@ mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl notifi
 ```
 
 HTTP 场景覆盖真实后台重试与死信，JUnit 验证本地事务和幂等回执；公共模块的 DatabaseContractTest 还覆盖租约过期和迟到工作者隔离。
+
+## 已验证范围
+
+2026-11-11 最近一次业务代码验收：本模块 2 个 Java 测试通过。支付事实与通知任务原子落库、回执幂等；无数据库环境变量启动、MySQL
+state 与 PostgreSQL receipts 查询通过。
+
+公共环境、Seata Server 配置及全项目验收汇总见[根 README](../README.md)。

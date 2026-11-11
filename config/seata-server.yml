@@ -1,4 +1,4 @@
-# 历史 2.2.0/file 发行包配置；当前 2.0.0 源码 DB 模式见 seata/server/README.md。
+# 历史 2.2.0/file 发行包配置；当前 2.0.0 源码 DB 模式见 README.md 的 Seata Server 配置章节。
 server:
   address: 127.0.0.1
   port: 7091

@@ -23,7 +23,7 @@ psql -h 127.0.0.1 -p 5432 -U postgres -W -d dtx_demo_pg -f tcc-demo/sql/postgres
 `demo.datasource`：MySQL `3308 root/root`、PG `5432 postgres/postgres`，修改连接直接编辑 YAML；无需数据库环境变量或 `.ps1`。
 
 ```bash
-mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -pl tcc-demo -am package -DskipTests
+mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl tcc-demo -am package -DskipTests
 java -jar tcc-demo/target/tcc-demo-1.0.0.jar
 ```
 
@@ -66,7 +66,7 @@ HTTP 409。
 在已经配置数据库连接的终端设置 `DEMO_DB_TESTS=true` 后运行：
 
 ```bash
-mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -pl tcc-demo -am test
+mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl tcc-demo -am test
 ```
 
 未启用 `DEMO_DB_TESTS` 时真实数据库测试会跳过。测试自动应用模块建表
@@ -93,3 +93,10 @@ SELECT tx_id,state,payload FROM tcc_branches ORDER BY tx_id;
 公共恢复配置：demo.workflow.max-attempts 默认 8，interval-ms 默认 1000，prepare-timeout-seconds 默认 60，recovery-enabled 默认
 true。退避从 1 秒指数增长，最大 60 秒。手动预留需要在 expiresAt 前确认；二阶段确认决议一旦写入，即使超过预留截止时间也必须继续
 Confirm。
+
+## 已验证范围
+
+2026-11-11 最近一次业务代码验收：本模块 23 个 Java 测试通过。预留、确认、取消、幂等、防悬挂、并发和资源不足；20 个 HTTP 场景及实际
+JVM 重启后继续确认通过。
+
+公共环境、Seata Server 配置及全项目验收汇总见[根 README](../README.md)。

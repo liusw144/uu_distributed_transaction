@@ -23,7 +23,7 @@ CREATE DATABASE dtx_demo_pg;
 ```
 
 TC 必须使用 Seata 2.0.0，以 file 注册发现启动，监听 8091；不用 Nacos/Redis/RabbitMQ。若已有本仓库 TC 运行，请直接复用。本机现有
-TC 的直接 Java 启动命令见 [Seata 总说明](../README.md)，不依赖 bin/bat/ps1 脚本；先按总说明启动 TC，再启动本模块。
+TC 的直接 Java 启动命令见 [根目录说明](../../README.md#seata-server)，不依赖 bin/bat/ps1 脚本；先按总说明启动 TC，再启动本模块。
 
 TC 使用 DB 模式，需保留 MySQL 的 seata_tc_200 协调库；客户端重启仍使用同一个 application-id 和 TC。不要在有待处理分支时清理
 TC 协调表或业务分支表。
@@ -89,3 +89,10 @@ mvn -B -s scripts/maven-settings.xml '-Dmaven.repo.local=.runtime/m2' -f seata/t
 幂等与防悬挂采用各库 `(xid,branch_id)` 主键和行锁，空 Cancel 插入 CANCELLED 墓碑，晚 Try 拒绝；重复成功二阶段返回
 true，跨终态动作返回 false。显式 `useTCCFence=false`，避免默认 MySQL 本地事务管理器管理 PostgreSQL
 分支。故障前的资源变化和分支状态始终同库同事务提交。
+
+## 已验证范围
+
+2026-11-11 最近一次业务代码验收：本模块 9 个 Java 测试通过。真实 TC 回调、幂等、空取消、防悬挂和二阶段重试；17 个 HTTP 场景通过。TC
+与客户端同时中断后从 DB 恢复 Confirm，冻结归零且只扣一次。
+
+公共环境、Seata Server 配置及全项目验收汇总见[根 README](../../README.md)。

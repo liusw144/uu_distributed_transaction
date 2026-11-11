@@ -93,3 +93,9 @@ mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl xa-dem
 ## 6. 恢复日志
 
 应用日志目录为根目录下 .runtime/xa-logs，测试使用本模块 target/xa-test-logs。崩溃恢复时保留相同日志目录、管理器名和资源名；本配置只启动一个 XA 应用实例。HTTP 场景验证业务异常回滚，不等同于验证进程断电恢复。
+
+## 已验证范围
+
+2026-11-11 最近一次业务代码验收：本模块 2 个 Java 测试通过。Atomikos 两库提交及异常回滚；无数据库环境变量直接运行主类通过。
+
+公共环境、Seata Server 配置及全项目验收汇总见[根 README](../README.md)。

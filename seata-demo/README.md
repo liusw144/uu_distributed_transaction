@@ -9,7 +9,7 @@ undo_log_id_seq，不能直接照搬 MySQL 表结构。
 
 客户端现已统一为 io.seata:seata-spring-boot-starter:2.0.0。IDEA 打开源码 D:/workspace/incubator-seata，选择 **Seata Server
 2.0 DB** 配置，直接运行 io.seata.server.ServerApplication。源码已配置 MySQL 的 seata_tc_200
-协调库；完整步骤见 [源码 Server 说明](../seata/server/README.md)。
+协调库；完整步骤见 [根目录的 Seata Server 配置](../README.md#seata-server)。
 
 日志出现 session / lock store mode: db 与 service listen port: 8091 后再启动业务服务。控制台为 http://127.0.0.1:7091，账号
 seata/seata；事务协调地址为 127.0.0.1:8091。DB 模式恢复依赖 TC 库，不再使用旧 .runtime/seata 的 2.2.0 file 模式发行包。
@@ -91,3 +91,10 @@ mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata-
 ```
 
 这两个测试不需要运行 TC；它们不替代本页三个业务服务的跨库 HTTP 验证。AT 不要求 PostgreSQL 启用 XA prepared transaction 参数。
+
+## 已验证范围
+
+2026-11-11 最近一次业务代码验收：本模块 2 个 Java 测试通过。XID 清理及 PostgreSQL Undo Log 结构；2.0.0 TC 下 10 个 HTTP
+请求通过。订单、库存、账户三个主类均已无数据库环境变量启动验证。
+
+公共环境、Seata Server 配置及全项目验收汇总见[根 README](../README.md)。
