@@ -1,0 +1,10 @@
+server:
+  address: 127.0.0.1
+  port: ${SERVER_PORT:8093}
+spring:
+  application:
+    name: saga-demo
+demo:
+  workflow:
+    enabled: true
+    protocol: saga

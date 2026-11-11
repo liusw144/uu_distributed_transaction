@@ -1,0 +1,15 @@
+server:
+  address: 127.0.0.1
+  port: 8104
+spring:
+  application:
+    name: seata-saga-demo
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+# 此模块直接配置官方持久化引擎，不启动 AT 自动代理或 TC 客户端。
+seata:
+  enabled: false
+  enable-auto-data-source-proxy: false
+logging:
+  level:
+    io.seata: WARN

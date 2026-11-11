@@ -1,0 +1,48 @@
+server:
+  address: 127.0.0.1
+  port: ${SERVER_PORT:8102}
+spring:
+  application:
+    name: seata-xa-demo
+demo:
+  datasource:
+    mode: seata-xa
+    # 本机默认连接已配好，不需要在 IDEA 运行配置中填写环境变量。
+    # HikariDataSource 使用 jdbc-url；如需切换环境仍可覆盖对应变量。
+    mysql:
+      jdbc-url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3308/dtx_demo_mysql?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true}
+      username: ${MYSQL_USER:root}
+      password: ${MYSQL_PASSWORD:root}
+      maximum-pool-size: 8
+      minimum-idle: 1
+      connection-timeout: 5000
+      pool-name: seata-xa-mysql-pool
+    postgresql:
+      jdbc-url: ${PG_URL:jdbc:postgresql://127.0.0.1:5432/dtx_demo_pg}
+      username: ${PG_USER:postgres}
+      password: ${PG_PASSWORD:postgres}
+      maximum-pool-size: 8
+      minimum-idle: 1
+      connection-timeout: 5000
+      pool-name: seata-xa-postgresql-pool
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: demo_tx_group
+  enable-auto-data-source-proxy: false
+  config:
+    type: file
+  registry:
+    type: file
+  service:
+    vgroup-mapping:
+      demo_tx_group: default
+    grouplist:
+      default: ${SEATA_ADDRESS:127.0.0.1:8091}
+  client:
+    undo:
+      log-serialization: jackson
+logging:
+  level:
+    io.seata: INFO
+

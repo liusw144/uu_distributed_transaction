@@ -1,0 +1,78 @@
+@base = http://127.0.0.1:8092/api/tcc
+@run = manual-001
+# 每轮实验更换以下业务号；同一次实验的 confirm/cancel/retry 复用原编号。
+
+### 1. 只 Try：观察 PREPARED / PENDING，以及库存、余额冻结
+POST {{base}}/orders?prepareOnly=true
+Content-Type: application/json
+
+{"orderId":"tcc-{{run}}-prepare","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":5.00,"failAt":"NONE"}
+
+### 2. 查看两库业务资源、分支日志、订单和工作流
+GET {{base}}/state
+
+### 3. 手动 Confirm：SUCCEEDED / PAID；重复调用不重复消耗
+POST {{base}}/orders/tcc-{{run}}-prepare/confirm
+
+### 4. 查看当前工作流
+GET {{base}}/orders/tcc-{{run}}-prepare
+
+### 5. Confirm 后禁止改为 Cancel，预期 HTTP 409
+POST {{base}}/orders/tcc-{{run}}-prepare/cancel
+
+### 6. 独立的取消实验：先冻结
+POST {{base}}/orders?prepareOnly=true
+Content-Type: application/json
+
+{"orderId":"tcc-{{run}}-cancel","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":5.00,"failAt":"NONE"}
+
+### 7. 手动 Cancel：释放冻结，CANCELLED / CANCELLED
+POST {{base}}/orders/tcc-{{run}}-cancel/cancel
+
+### 8. Try 库存之后业务失败；响应 HTTP 200，检查 status 及最终释放
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"tcc-{{run}}-failure","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":5.00,"failAt":"AFTER_STOCK"}
+
+### 9. 二阶段故障实验：先冻结，须在默认 60 秒到期前确认
+POST {{base}}/orders?prepareOnly=true
+Content-Type: application/json
+
+{"orderId":"tcc-{{run}}-retry","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":5.00,"failAt":"NONE"}
+
+### 10. Confirm 调用前失败一次、提交后丢失 ACK 一次
+POST {{base}}/faults?phase=confirm&failNext=1&loseAckNext=1
+
+### 11. 持久化 COMMIT 决议并推进；失败也不能切换 Cancel
+POST {{base}}/orders/tcc-{{run}}-retry/confirm
+
+### 12. 自动恢复后应 SUCCEEDED；ACK 丢失不重复消耗
+GET {{base}}/orders/tcc-{{run}}-retry
+
+### 13. 清除 Confirm 故障
+POST {{base}}/faults?phase=confirm&failNext=0&loseAckNext=0
+
+### 14. 原阶段人工重试（重试耗尽 blocked 后也使用此入口）
+POST {{base}}/orders/tcc-{{run}}-retry/retry
+
+### 15. 独立的 Cancel 故障实验：先冻结
+POST {{base}}/orders?prepareOnly=true
+Content-Type: application/json
+
+{"orderId":"tcc-{{run}}-cancel-retry","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":5.00,"failAt":"NONE"}
+
+### 16. Cancel 调用前失败一次、提交后丢失 ACK 一次
+POST {{base}}/faults?phase=cancel&failNext=1&loseAckNext=1
+
+### 17. 取消并等待自动恢复；同一资源不能重复释放
+POST {{base}}/orders/tcc-{{run}}-cancel-retry/cancel
+
+### 18. 查看最终 CANCELLED 及 reserved=0
+GET {{base}}/orders/tcc-{{run}}-cancel-retry
+
+### 19. 清除剩余 Cancel 故障，避免影响下一轮实验
+POST {{base}}/faults?phase=cancel&failNext=0&loseAckNext=0
+
+### 20. 如已耗尽重试，人工继续 Cancel
+POST {{base}}/orders/tcc-{{run}}-cancel-retry/retry

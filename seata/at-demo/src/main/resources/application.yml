@@ -1,0 +1,30 @@
+server:
+  address: 127.0.0.1
+  port: ${SERVER_PORT:8101}
+spring:
+  application:
+    name: seata-at-demo
+demo:
+  datasource:
+    mode: seata-at
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: demo_tx_group
+  enable-auto-data-source-proxy: false
+  config:
+    type: file
+  registry:
+    type: file
+  service:
+    vgroup-mapping:
+      demo_tx_group: default
+    grouplist:
+      default: ${SEATA_ADDRESS:127.0.0.1:8091}
+  client:
+    undo:
+      log-serialization: jackson
+logging:
+  level:
+    io.seata: INFO
+
