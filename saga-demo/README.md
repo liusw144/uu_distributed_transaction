@@ -8,8 +8,9 @@
 
 ## 启动
 
-1. 完成[根目录说明](../README.md)中的 JDK 17、Maven、两库及六项数据库环境变量配置。密码通过 `MYSQL_PASSWORD` /
-   `PG_PASSWORD` 提供，不写进应用配置。
+1. 完成[根目录说明](../README.md)中的 JDK
+   17、Maven、两库准备。连接读取 [application.yml](src/main/resources/application.yml) 的 `demo.datasource`：MySQL
+   `3308 root/root`、PG `5432 postgres/postgres`，修改连接直接编辑 YAML，无需数据库环境变量。
 2.
 先执行根目录的 [MySQL SQL](../sql/mysql.sql)、[MySQL 协调表 SQL](../sql/workflow-mysql.sql)、[PostgreSQL SQL](../sql/postgresql.sql)
 ，再在各自专用库执行本模块 [MySQL 增量 SQL](sql/mysql.sql)、[PostgreSQL 增量 SQL](sql/postgresql.sql)。SQL 幂等建表和初始化

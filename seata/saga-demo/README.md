@@ -9,7 +9,9 @@ common 的手写 WorkflowEngine。
 先按 [Seata 总入口](../README.md) 准备父 POM/common 和两库。Saga 可独立运行，无需 TC、Nacos、Redis 或 RabbitMQ。
 
 默认 MySQL `127.0.0.1:3308/dtx_demo_mysql`（root），PostgreSQL `127.0.0.1:5432/dtx_demo_pg`
-（postgres）。密码通过环境变量提供，默认空值。应用启动自动执行 `src/main/resources/sql/mysql.sql` 和 `postgresql.sql`，只创建
+（postgres）。连接读取 [application.yml](src/main/resources/application.yml) 的 `demo.datasource`，本机密码已分别配置为
+root / postgres，修改连接直接编辑 YAML，无需数据库环境变量。应用启动自动执行 `src/main/resources/sql/mysql.sql` 和
+`postgresql.sql`，只创建
 `seata_saga_*` 表、插入缺失的 `p1=100` / `u1=1000`；再次启动不会重置已有资源。SQL 也可在 IDEA 数据库控制台分别执行。引擎表采用官方日志字段结构，表前缀为
 `seata_saga_`，时间列保留毫秒以支持官方乐观锁。
 
@@ -18,8 +20,6 @@ common 的手写 WorkflowEngine。
 ```bat
 set JAVA_HOME=D:\software\java\jdk17\jdk17.0.15_6
 set PATH=%JAVA_HOME%\bin;%PATH%
-set MYSQL_PASSWORD=root
-set PG_PASSWORD=postgres
 mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -pl seata/saga-demo -am package
 java -jar seata/saga-demo/target/seata-saga-demo-1.0.0.jar
 ```
@@ -30,7 +30,7 @@ POM/common，再用
 `mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -f seata/saga-demo/pom.xml spring-boot:run`。可选环境变量
 `MYSQL_URL / MYSQL_USER / MYSQL_PASSWORD`、`PG_URL / PG_USER / PG_PASSWORD` 与 common DatabaseFactory 一致。
 
-IDEA：Maven 导入根 pom，项目 SDK/运行 JRE 选 Java 17；运行 `cn.demo.seata.saga.SagaApplication`，配置两库密码环境变量。打开本目录
+IDEA：Maven 导入根 pom，项目 SDK/运行 JRE 选 Java 17；直接运行 `cn.demo.seata.saga.SagaApplication`，工作目录为项目根目录。打开本目录
 `requests.http`，每轮修改 `@run`，执行全部请求；脚本含状态及最终资源断言。重复执行成功订单会消耗资源，若 p1 或 u1
 不足，请显式补充本例专用表，切勿重置其他模块数据。
 

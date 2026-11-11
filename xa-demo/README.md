@@ -4,7 +4,7 @@
 
 ## 1. 启动条件
 
-先完成[根 README 的数据库和环境变量配置](../README.md)。在 PG 执行：
+先完成[根 README 的数据库初始化](../README.md)。在 PG 执行：
 
 ```sql
 SHOW max_prepared_transactions;
@@ -20,7 +20,9 @@ ALTER SYSTEM SET max_prepared_transactions = 100;
 
 ## 2. 直接运行服务
 
-IDEA 运行 `cn.demo.xa.XaApplication`，Working directory 为项目根目录，填写公共六项数据库环境变量，无需额外 Program arguments。
+IDEA 选择 JDK 17，直接运行 `cn.demo.xa.XaApplication`，Working directory
+为项目根目录。连接读取 [application.yml](src/main/resources/application.yml) 的 `demo.datasource`：MySQL `3308 root/root`
+、PG `5432 postgres/postgres`，无需环境变量或 Program arguments；修改连接直接编辑 YAML。Atomikos 仍使用原生 XADataSource。
 
 或在根目录直接运行已打包的 jar：
 

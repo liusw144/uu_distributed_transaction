@@ -18,9 +18,9 @@ mysql -h 127.0.0.1 -P 3308 -u root -p dtx_demo_mysql < tcc-demo/sql/mysql.sql
 psql -h 127.0.0.1 -p 5432 -U postgres -W -d dtx_demo_pg -f tcc-demo/sql/postgresql.sql
 ```
 
-命令中的输入重定向适用于 Bash / CMD；也可在数据库客户端打开相应 SQL 文件执行。无需运行 `.ps1`。通过当前终端或 IDE 设置
-`MYSQL_URL`、`MYSQL_USER`、`MYSQL_PASSWORD`、`PG_URL`、`PG_USER`、`PG_PASSWORD`，密码不要写入项目文件。默认连接本机 MySQL 3308
-与 PostgreSQL 5432；数据库密码必须显式提供。
+命令中的输入重定向适用于 Bash / CMD；也可在数据库客户端打开相应 SQL 文件执行。IDEA 选择 JDK 17，直接运行
+`cn.demo.tcc.TccApplication`，工作目录为项目根目录。连接读取 [application.yml](src/main/resources/application.yml) 的
+`demo.datasource`：MySQL `3308 root/root`、PG `5432 postgres/postgres`，修改连接直接编辑 YAML；无需数据库环境变量或 `.ps1`。
 
 ```bash
 mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -pl tcc-demo -am package -DskipTests

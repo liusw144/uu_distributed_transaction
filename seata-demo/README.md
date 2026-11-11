@@ -4,7 +4,8 @@
 
 ## 1. 准备 TC
 
-完成[公共数据库和环境配置](../README.md)，确认两库已执行 SQL，包含 undo_log 表。PG 的 undo_log 必须包含 id 和 undo_log_id_seq，不能直接照搬 MySQL 表结构。
+完成[公共数据库初始化](../README.md)，确认两库已执行 SQL，包含 undo_log 表。PG 的 undo_log 必须包含 id 和
+undo_log_id_seq，不能直接照搬 MySQL 表结构。
 
 客户端现已统一为 io.seata:seata-spring-boot-starter:2.0.0。IDEA 打开源码 D:/workspace/incubator-seata，选择 **Seata Server
 2.0 DB** 配置，直接运行 io.seata.server.ServerApplication。源码已配置 MySQL 的 seata_tc_200
@@ -15,17 +16,19 @@ seata/seata；事务协调地址为 127.0.0.1:8091。DB 模式恢复依赖 TC �
 
 ## 2. IDEA 启动三个独立进程
 
-复制三个 Application 运行配置，Main class 均为 `cn.demo.at.SeataApplication`，Working directory 均为项目根目录，分别填写公共六项数据库环境变量。
+IDEA 选择 JDK 17，Working directory 为项目根目录，分别直接运行以下 main，无需环境变量或 Program
+arguments。两库连接统一读取 [application.yml](src/main/resources/application.yml) 的 `demo.datasource`，本机默认 MySQL
+`3308 root/root`、PG `5432 postgres/postgres`。
 
-| 配置名称 | Program arguments |
-|---|---|
-| at-stock | --demo.role=stock --server.port=8084 --spring.application.name=seata-stock |
-| at-account | --demo.role=account --server.port=8085 --spring.application.name=seata-account |
-| at-order | --demo.role=order --server.port=8083 --spring.application.name=seata-order |
+| 角色      | 主类                                 | 自动加载配置 / 端口                    |
+|---------|------------------------------------|--------------------------------|
+| stock   | cn.demo.at.SeataStockApplication   | application-stock.yml / 8084   |
+| account | cn.demo.at.SeataAccountApplication | application-account.yml / 8085 |
+| order   | cn.demo.at.SeataApplication        | application.yml / 8083         |
 
 先启动 stock、account，最后启动 order。依次访问 8084、8085、8083 的 /demo/health。
 
-或者在根目录三个独立终端中执行：
+jar 默认入口为订单主类；也可在根目录三个独立终端中执行以下兼容命令：
 
 ```text
 java -jar seata-demo/target/seata-demo-1.0.0.jar --demo.role=stock --server.port=8084 --spring.application.name=seata-stock

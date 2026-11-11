@@ -43,22 +43,16 @@ config/seata-server.yml 属于历史 file 模式环境，不再作为当前 2.0.
 
 ## IDEA 或直接 Java 启动模块
 
-IDEA 导入根 pom.xml，项目 SDK 设置 JDK 17，按各模块 README 运行启动类，工作目录为项目根目录，并填写以下环境变量：
+IDEA 导入根 pom.xml，项目 SDK 设置 JDK 17，直接运行上表主类，工作目录为项目根目录。四个模块均从各自
+`src/main/resources/application.yml` 的 `demo.datasource.mysql` / `demo.datasource.postgresql` 读取连接，默认 MySQL
+`3308 root/root`、PG `5432 postgres/postgres`。修改连接直接编辑 YAML，无需数据库环境变量、专用 .run 配置或 ps1。
 
-```text
-MYSQL_URL=jdbc:mysql://127.0.0.1:3308/dtx_demo_mysql?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
-MYSQL_USER=root
-MYSQL_PASSWORD=root
-PG_URL=jdbc:postgresql://127.0.0.1:5432/dtx_demo_pg
-PG_USER=postgres
-PG_PASSWORD=postgres
-```
-
-终端可直接设置这些环境变量，无需创建任何脚本。若 PATH 默认是 Java 8，先设置 JAVA_HOME 为本机 JDK 17 路径，并将其 bin 加入
+环境变量 `MYSQL_URL / MYSQL_USER / MYSQL_PASSWORD`、`PG_URL / PG_USER / PG_PASSWORD` 仍可按需覆盖 YAML 默认值。若 PATH 默认是
+Java 8，先设置 JAVA_HOME 为本机 JDK 17 路径，并将其 bin 加入
 PATH。
 
 ```text
-mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -pl seata/at-demo,seata/xa-demo,seata/tcc-demo,seata/saga-demo -am -DskipTests package
+mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/at-demo,seata/xa-demo,seata/tcc-demo,seata/saga-demo -am -DskipTests package
 java -jar seata/at-demo/target/seata-at-demo-1.0.0.jar
 java -jar seata/xa-demo/target/seata-xa-demo-1.0.0.jar
 java -jar seata/tcc-demo/target/seata-tcc-demo-1.0.0.jar
@@ -70,13 +64,14 @@ java -jar seata/saga-demo/target/seata-saga-demo-1.0.0.jar
 
 ## 框架测试
 
-先启动 TC、MySQL、PostgreSQL，设置以上数据库环境变量和 DEMO_SEATA_TESTS=true：
+先启动 TC、MySQL、PostgreSQL，设置 DEMO_SEATA_TESTS=true；这些应用集成测试同样读取模块 YAML：
 
 ```text
-mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -pl seata/at-demo,seata/xa-demo,seata/tcc-demo,seata/saga-demo -am verify
+mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/at-demo,seata/xa-demo,seata/tcc-demo,seata/saga-demo -am verify
 ```
 
-开启原有测试时另设 DEMO_DB_TESTS=true、DEMO_XA_TESTS=true，再从根目录执行 mvn verify。未设置测试环境变量会跳过相应集成测试；Maven
+开启原有测试时另设 DEMO_DB_TESTS=true、DEMO_XA_TESTS=true，并按[根说明](../README.md)提供直接 JDBC
+公共测试使用的六项数据库环境变量，再从根目录执行 mvn verify。未设置测试开关会跳过相应集成测试；Maven
 的 -D 同名参数不能代替环境变量。
 
 模式定义参考官方文档：[AT](https://seata.apache.org/docs/v2.0/user/mode/at/)、[XA](https://seata.apache.org/docs/v2.0/user/mode/xa/)、[TCC](https://seata.apache.org/docs/v2.0/user/mode/tcc/)、[Saga](https://seata.apache.org/docs/v2.0/user/mode/saga/)。

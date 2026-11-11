@@ -6,14 +6,14 @@
 新增 [seata/：Seata 四种模式完整集成](seata/README.md)，包含 AT（8101）、XA（8102）、TCC（8103）、Saga（8104）。这些模块使用真正的
 Seata 代理、TC 或官方状态机引擎；下表保留原有六种方案，便于对比不同框架与手写实现。
 
-| 方案           | 验证说明                                                       | HTTP 请求                                          | 启动类 / 端口                          |
-|--------------|------------------------------------------------------------|--------------------------------------------------|-----------------------------------|
-| XA 两阶段提交     | [xa-demo/README.md](xa-demo/README.md)                     | [requests.http](xa-demo/requests.http)           | XaApplication / 8081              |
-| 本地消息表 + 定时补偿 | [outbox-demo/README.md](outbox-demo/README.md)             | [requests.http](outbox-demo/requests.http)       | OutboxApplication / 8082          |
-| Seata AT     | [seata-demo/README.md](seata-demo/README.md)               | [requests.http](seata-demo/requests.http)        | SeataApplication / 8083、8084、8085 |
-| 最大努力通知       | [notification-demo/README.md](notification-demo/README.md) | [requests.http](notification-demo/requests.http) | NotificationApplication / 8086    |
-| TCC 资源预留     | [tcc-demo/README.md](tcc-demo/README.md)                   | [requests.http](tcc-demo/requests.http)          | TccApplication / 8092             |
-| Saga 业务补偿    | [saga-demo/README.md](saga-demo/README.md)                 | [requests.http](saga-demo/requests.http)         | SagaApplication / 8093            |
+| 方案           | 验证说明                                                       | HTTP 请求                                          | 启动类 / 端口                                                                               |
+|--------------|------------------------------------------------------------|--------------------------------------------------|----------------------------------------------------------------------------------------|
+| XA 两阶段提交     | [xa-demo/README.md](xa-demo/README.md)                     | [requests.http](xa-demo/requests.http)           | XaApplication / 8081                                                                   |
+| 本地消息表 + 定时补偿 | [outbox-demo/README.md](outbox-demo/README.md)             | [requests.http](outbox-demo/requests.http)       | OutboxApplication / 8082                                                               |
+| Seata AT     | [seata-demo/README.md](seata-demo/README.md)               | [requests.http](seata-demo/requests.http)        | SeataApplication / SeataStockApplication / SeataAccountApplication（8083 / 8084 / 8085） |
+| 最大努力通知       | [notification-demo/README.md](notification-demo/README.md) | [requests.http](notification-demo/requests.http) | NotificationApplication / 8086                                                         |
+| TCC 资源预留     | [tcc-demo/README.md](tcc-demo/README.md)                   | [requests.http](tcc-demo/requests.http)          | TccApplication / 8092                                                                  |
+| Saga 业务补偿    | [saga-demo/README.md](saga-demo/README.md)                 | [requests.http](saga-demo/requests.http)         | SagaApplication / 8093                                                                 |
 
 ## 一、数据库准备
 
@@ -53,24 +53,32 @@ CREATE DATABASE dtx_demo_pg WITH ENCODING='UTF8' TEMPLATE=template0;
 TCC 和 Saga 使用单进程跨两库的显式教学协调器，包含持久化决议、幂等分支、自动重试与人工恢复，不是 Seata TCC / Saga 引擎集成。TCC
 的可用、冻结及已消费资源与 Saga 真实提交后的业务补偿可以分别观察。
 
-## 二、IDEA 公共运行配置
+## 二、IDEA 直接启动主类
 
 1. 打开根 pom.xml，将项目 SDK、Maven Runner JRE、运行配置 JRE 都设为 JDK 17。
 2. 每个 Application 的 **Working directory** 统一设置为 `D:\self\uu_distributed_transaction`。
-3. 在 **Environment variables** 中分别配置以下六项；密码使用本机实际值，不提交到 Git：
+3. 直接点击对应主类的 main 运行。各模块的 `src/main/resources/application.yml` 已配置本机连接：MySQL `3308 root/root`
+   ，PostgreSQL `5432 postgres/postgres`，无需额外环境变量或专用启动配置。
+4. 修改连接时编辑对应模块 YAML 的 `demo.datasource.mysql` / `demo.datasource.postgresql`。原三服务 AT
+   分别运行订单、库存、账户主类，角色配置由 `application-stock.yml` / `application-account.yml` 自动加载，见模块说明。
+
+YAML 中的 `${MYSQL_PASSWORD:root}` 等占位符允许按需使用环境变量覆盖。以下六项用于直接 JDBC 的公共集成测试，应用启动不要求填写：
 
 ```text
 MYSQL_URL=jdbc:mysql://127.0.0.1:3308/dtx_demo_mysql?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
 MYSQL_USER=root
-MYSQL_PASSWORD=本机MySQL密码
+MYSQL_PASSWORD=root
 PG_URL=jdbc:postgresql://127.0.0.1:5432/dtx_demo_pg
 PG_USER=postgres
-PG_PASSWORD=本机PostgreSQL密码
+PG_PASSWORD=postgres
 ```
 
-应用可以使用默认 URL，但数据库测试直接读取环境变量，因此测试配置中六项都要填写。IDEA 的环境变量表格每行填一项。Java 应用不会自动加载 config/local.ps1。
+数据库测试直接读取环境变量，因此运行全部测试时六项都要填写。IDEA 的环境变量表格每行填一项。应用直接读取 YAML，不依赖
+config/local.ps1。
 
 服务启动后，可用浏览器访问 `http://127.0.0.1:端口/demo/health`，应返回 `{"status":"UP"}`。
+
+本机 YAML 直接启动的逐模块验收与 118 个测试结果见 [启动验收记录](docs/verification-yaml-startup.md)。
 
 ## 三、构建与直接启动
 
@@ -86,7 +94,7 @@ mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" package -D
 mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl xa-demo -am package -DskipTests
 ```
 
-各模块 README 提供直接 java -jar 命令。命令执行前须在当前终端设置上述六项环境变量；IDEA 运行配置中的变量不会自动传入外部终端。Windows CMD 可以逐项执行 `set "变量名=变量值"`，Linux/macOS 使用 export。
+各模块 README 提供直接 java -jar 命令，连接参数与 IDEA 主类启动一样读取模块 YAML。使用本机默认连接时无需设置数据库环境变量。
 
 ## 四、怎样验证
 

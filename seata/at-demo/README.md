@@ -15,25 +15,18 @@ Undo Log 恢复。普通数据库查询可能读到第一阶段中间态，写�
    应已存在。分别在对应数据库执行本模块 [MySQL SQL](sql/mysql.sql)、[PostgreSQL SQL](sql/postgresql.sql)
    。重复执行不会重置资源；SEATA_AT:SKU-001 初始库存 100，SEATA_AT:U1001 初始余额 10000.00。
 2. 按 [Seata 总入口](../README.md) 直接用 Java 启动 TC，默认 127.0.0.1:8091，不需要 Nacos、Redis 或 RabbitMQ。
-3. IDEA 选择 JDK 17，运行 cn.demo.seata.at.AtApplication，工作目录为项目根目录，填入以下环境变量：
-
-```text
-MYSQL_URL=jdbc:mysql://127.0.0.1:3308/dtx_demo_mysql?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
-MYSQL_USER=root
-MYSQL_PASSWORD=root
-PG_URL=jdbc:postgresql://127.0.0.1:5432/dtx_demo_pg
-PG_USER=postgres
-PG_PASSWORD=postgres
-```
+3. IDEA 选择 JDK 17，直接运行
+   cn.demo.seata.at.AtApplication，工作目录为项目根目录。连接读取 [application.yml](src/main/resources/application.yml) 的
+   `demo.datasource`：MySQL `3308 root/root`、PG `5432 postgres/postgres`，修改连接直接编辑 YAML，无需数据库环境变量。
 
 默认端口 8101。可通过 SEATA_ADDRESS / SERVER_PORT 环境变量修改 TC 地址和服务端口。
 
-AT 的两个数据库都必须有 undo_log 表。本模块 PostgreSQL SQL 包含 BIGSERIAL id，对应 Seata 2.2 适配器使用的 undo_log_id_seq。
+AT 的两个数据库都必须有 undo_log 表。本模块 PostgreSQL SQL 包含 BIGSERIAL id，对应 Seata 2.0 适配器使用的 undo_log_id_seq。
 
-也可从根目录构建后直接启动，终端需已配置 JDK 17 和以上环境变量：
+也可从根目录构建后直接启动，终端使用 JDK 17：
 
 ```text
-mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -pl seata/at-demo -am -DskipTests package
+mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/at-demo -am -DskipTests package
 java -jar seata/at-demo/target/seata-at-demo-1.0.0.jar
 ```
 
@@ -71,7 +64,7 @@ Undo Log 在事务结束后通常会被自动删除，不能用查不到日志�
 
 ## 4. 真实集成测试
 
-TC 与两个数据库须已启动，并设好数据库环境变量。在 IDEA 运行测试时额外设置 DEMO_SEATA_TESTS=true；终端可设置同名环境变量后执行：
+TC 与两个数据库须已启动，测试读取本模块 YAML。在 IDEA 运行测试时设置 DEMO_SEATA_TESTS=true；终端可设置同名环境变量后执行：
 
 ```text
 mvn -B -s scripts/maven-settings.xml -Dmaven.repo.local=.runtime/m2 -pl seata/at-demo -am test

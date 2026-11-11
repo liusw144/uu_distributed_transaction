@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.*;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 
 /**
- * 同一个 jar 分别以 order、stock、account 三种角色启动，形成三个独立 HTTP 服务。
+ * 默认启动订单服务；库存和账户分别直接运行 SeataStockApplication、SeataAccountApplication。
  */
 @SpringBootApplication(scanBasePackages = "cn.demo", exclude = DataSourceAutoConfiguration.class)
 public class SeataApplication {

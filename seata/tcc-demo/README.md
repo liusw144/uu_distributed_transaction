@@ -25,17 +25,15 @@ CREATE DATABASE dtx_demo_pg;
 TC 必须使用 Seata 2.0.0，以 file 注册发现启动，监听 8091；不用 Nacos/Redis/RabbitMQ。若已有本仓库 TC 运行，请直接复用。本机现有
 TC 的直接 Java 启动命令见 [Seata 总说明](../README.md)，不依赖 bin/bat/ps1 脚本；先按总说明启动 TC，再启动本模块。
 
-TC 的持久化目录需保留，客户端重启仍使用同一个 application-id 和 TC。不要在有待处理分支时清理 TC 日志或业务分支表。
+TC 使用 DB 模式，需保留 MySQL 的 seata_tc_200 协调库；客户端重启仍使用同一个 application-id 和 TC。不要在有待处理分支时清理
+TC 协调表或业务分支表。
+
+连接读取 [application.yml](src/main/resources/application.yml) 的 `demo.datasource`：MySQL `3308 root/root`、PG
+`5432 postgres/postgres`，修改连接直接编辑 YAML。无需配置数据库环境变量，原 application.properties 已迁移至 YAML。
 
 ```powershell
 $env:JAVA_HOME='D:/software/java/jdk17/jdk17.0.15_6'
 $env:PATH="$env:JAVA_HOME/bin;D:/software/apache-maven-3.9.12/bin;$env:PATH"
-$env:MYSQL_URL='jdbc:mysql://127.0.0.1:3308/dtx_demo_mysql?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true'
-$env:MYSQL_USER='root'
-$env:MYSQL_PASSWORD='root'
-$env:PG_URL='jdbc:postgresql://127.0.0.1:5432/dtx_demo_pg'
-$env:PG_USER='postgres'
-$env:PG_PASSWORD='postgres'
 mvn -B -s scripts/maven-settings.xml '-Dmaven.repo.local=.runtime/m2' -pl seata/tcc-demo -am install -DskipTests
 mvn -B -s scripts/maven-settings.xml '-Dmaven.repo.local=.runtime/m2' -f seata/tcc-demo/pom.xml spring-boot:run
 ```
@@ -44,7 +42,7 @@ mvn -B -s scripts/maven-settings.xml '-Dmaven.repo.local=.runtime/m2' -f seata/t
 NOT EXISTS 加仅插入不存在的种子，不重置库存余额。也可以使用 IDEA 的两个数据源分别手动执行这些文件。初始资源为 MySQL p100
 库存100、PostgreSQL u100余额10000。
 
-IDEA：导入根 pom，SDK/运行 JRE 设置17，运行 `cn.demo.seata.tcc.TccApplication`，配置同样的六个数据库环境变量，端口8103。直接
+IDEA：导入根 pom，SDK/运行 JRE 设置17，直接运行 `cn.demo.seata.tcc.TccApplication`，工作目录为项目根目录，端口8103。直接
 Java：构建后运行 `java -jar seata/tcc-demo/target/seata-tcc-demo-1.0.0.jar`。
 
 ## 验证

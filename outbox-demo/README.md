@@ -4,7 +4,9 @@
 
 ## 1. 直接运行服务
 
-完成[公共数据库和环境配置](../README.md)，IDEA 运行 `cn.demo.outbox.OutboxApplication`，Working directory 为项目根目录。为了快速观察死信，Program arguments 填写：
+完成[公共数据库初始化](../README.md)，IDEA 选择 JDK 17，直接运行 `cn.demo.outbox.OutboxApplication`，Working directory
+为项目根目录。连接读取 [application.yml](src/main/resources/application.yml) 的 `demo.datasource`：MySQL `3308 root/root`
+、PG `5432 postgres/postgres`，无需数据库环境变量。以下 Program arguments 仅用于快速观察死信，可选：
 
 ```text
 --demo.retry.max-attempts=3 --demo.retry.base-seconds=1 --demo.retry.max-seconds=2
