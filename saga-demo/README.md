@@ -18,7 +18,7 @@
 3. 从工程根目录构建并运行，或在 IDEA 中运行 `cn.demo.saga.SagaApplication`，工作目录为工程根目录。
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl saga-demo -am package
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl saga-demo -am package
 java -jar saga-demo/target/saga-demo-1.0.0.jar
 ```
 
@@ -109,7 +109,7 @@ SELECT tx_id,state,payload FROM saga_account_actions ORDER BY tx_id;
 JDK 17 从工程根目录运行：
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl saga-demo -am test
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl saga-demo -am test
 ```
 
 未启用 `DEMO_DB_TESTS` 时跳过真库测试。用例直接构造参与者，使用 UUID

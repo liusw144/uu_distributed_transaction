@@ -45,7 +45,7 @@ PostgreSQL。应用会在启动时检查。不要随意提交或回滚其他应�
 也可从根目录构建后直接启动，终端使用 JDK 17：
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/xa-demo -am -DskipTests package
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/xa-demo -am -DskipTests package
 java -jar seata/xa-demo/target/seata-xa-demo-1.0.0.jar
 ```
 
@@ -94,7 +94,7 @@ FROM pg_prepared_xacts;
 TC 与两个数据库须已启动。测试沿用 YAML 中的本机默认连接，只需在 IDEA 或终端设置 DEMO_SEATA_TESTS=true 后执行：
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/xa-demo -am test
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/xa-demo -am test
 ```
 
 测试使用独立业务号与资源，验证实际 Seata 代理、成功、三个故障点、余额不足、库存不足与重复提交。未设置开关时数据库/TC 测试会跳过。

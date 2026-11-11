@@ -89,7 +89,7 @@ C、D 两组中 DEAD 阶段的差别是有没有接收端回执；两组最终�
 - localFailureRollsBackPaymentAndNotificationTogether：业务异常后订单与通知任务全部回滚。
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl notification-demo -am "-Dtest=NotificationScenarioTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl notification-demo -am "-Dtest=NotificationScenarioTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 HTTP 场景覆盖真实后台重试与死信，JUnit 验证本地事务和幂等回执；公共模块的 DatabaseContractTest 还覆盖租约过期和迟到工作者隔离。

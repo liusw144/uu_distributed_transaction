@@ -97,7 +97,7 @@ A～D 全部完成后，相对于本轮最初基线，只有 paid 和 dead 两�
 现有用例覆盖重复消费只扣一次、相同编号内容冲突、余额不足仅补偿一次、本地提交失败不留下订单或任务。测试中定时任务关闭，用测试方法驱动每个确认步骤。
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl outbox-demo -am "-Dtest=OutboxScenarioTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl outbox-demo -am "-Dtest=OutboxScenarioTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 ## 已验证范围

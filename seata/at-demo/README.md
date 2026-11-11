@@ -26,7 +26,7 @@ AT 的两个数据库都必须有 undo_log 表。本模块 PostgreSQL SQL 包含
 也可从根目录构建后直接启动，终端使用 JDK 17：
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/at-demo -am -DskipTests package
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/at-demo -am -DskipTests package
 java -jar seata/at-demo/target/seata-at-demo-1.0.0.jar
 ```
 
@@ -67,7 +67,7 @@ Undo Log 在事务结束后通常会被自动删除，不能用查不到日志�
 TC 与两个数据库须已启动，测试读取本模块 YAML。在 IDEA 运行测试时设置 DEMO_SEATA_TESTS=true；终端可设置同名环境变量后执行：
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/at-demo -am test
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata/at-demo -am test
 ```
 
 测试使用独立业务号与资源，验证实际 Seata 代理、成功、三个故障点、余额不足、库存不足与重复提交。未设置开关时数据库/TC 测试会跳过。

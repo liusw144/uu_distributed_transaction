@@ -107,23 +107,25 @@ PG_USER=postgres
 PG_PASSWORD=postgres
 ```
 
-数据库测试直接读取环境变量，因此运行全部测试时六项都要填写。IDEA 的环境变量表格每行填一项。应用直接读取 YAML，不依赖
-config/local.ps1。
+数据库测试直接读取环境变量，因此运行全部测试时六项都要填写。IDEA 的环境变量表格每行填一项。应用直接读取 YAML。
 
 服务启动后，可用浏览器访问 `http://127.0.0.1:端口/demo/health`，应返回 `{"status":"UP"}`。
 
 ## 构建与直接启动
 
+Maven 仓库配置统一放在 [.mvn/settings.xml](.mvn/settings.xml)，两个工程的 `.mvn/maven.config` 已同步引用；旧 scripts
+目录和本地配置脚本模板已移除。
+
 在根目录用 JDK 17 执行 Maven，无需运行脚本文件：
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" package -DskipTests
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" package -DskipTests
 ```
 
 也可以在 IDEA Maven 面板执行 package。只构建一个模块时要带上 common，例如：
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl xa-demo -am package -DskipTests
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl xa-demo -am package -DskipTests
 ```
 
 各模块 README 提供直接 java -jar 命令，连接参数与 IDEA 主类启动一样读取模块 YAML。使用本机默认连接时无需设置数据库环境变量。
@@ -155,7 +157,7 @@ DEMO_SEATA_TESTS=true
 然后运行全项目测试，或直接执行：
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" verify
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" verify
 ```
 
 这三个开关必须设为环境变量；仅加 Maven 的 -D 同名参数不会启用相应测试。未启用时集成测试会显示 skipped。XA 额外需要 PG
@@ -260,7 +262,7 @@ Run 后日志应显示 session / lock store mode 为 db，以及 `service listen
 也可从源码根目录直接构建，PowerShell 中 -D 参数保留引号：
 
 ```text
-mvn -B -s D:/self/uu_distributed_transaction/scripts/maven-settings.xml "-Dmaven.repo.local=D:/self/uu_distributed_transaction/.runtime/m2" -pl server -am -Prelease-seata "-Dmaven.test.skip=true" "-Dimage.publish.skip=true" package
+mvn -B -s D:/self/uu_distributed_transaction/.mvn/settings.xml "-Dmaven.repo.local=D:/self/uu_distributed_transaction/.runtime/m2" -pl server -am -Prelease-seata "-Dmaven.test.skip=true" "-Dimage.publish.skip=true" package
 ```
 
 上面只用于提前准备依赖和编译；日常从 IDEA 运行主类，无需运行发行包 JAR。构建使用 Java 17，跳过的是 Seata 上游源码自身的完整测试。

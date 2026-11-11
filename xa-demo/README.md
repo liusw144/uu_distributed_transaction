@@ -85,7 +85,7 @@ IDEA 直接运行 XaScenarioTest，环境变量使用公共六项，并增加 DE
 也可在根目录执行：
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl xa-demo -am "-Dtest=XaScenarioTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl xa-demo -am "-Dtest=XaScenarioTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 测试使用独立随机业务号和测试行，结束后清理。运行前停止 XaApplication。

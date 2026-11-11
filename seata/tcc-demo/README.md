@@ -34,8 +34,8 @@ TC 协调表或业务分支表。
 ```powershell
 $env:JAVA_HOME='D:/software/java/jdk17/jdk17.0.15_6'
 $env:PATH="$env:JAVA_HOME/bin;D:/software/apache-maven-3.9.12/bin;$env:PATH"
-mvn -B -s scripts/maven-settings.xml '-Dmaven.repo.local=.runtime/m2' -pl seata/tcc-demo -am install -DskipTests
-mvn -B -s scripts/maven-settings.xml '-Dmaven.repo.local=.runtime/m2' -f seata/tcc-demo/pom.xml spring-boot:run
+mvn -B -s .mvn/settings.xml '-Dmaven.repo.local=.runtime/m2' -pl seata/tcc-demo -am install -DskipTests
+mvn -B -s .mvn/settings.xml '-Dmaven.repo.local=.runtime/m2' -f seata/tcc-demo/pom.xml spring-boot:run
 ```
 
 如本机路径不同，替换 JAVA_HOME/Maven 路径。启动会执行 `src/main/resources/mysql.sql` 与 `postgresql.sql`：均为 CREATE IF
@@ -79,7 +79,7 @@ TC 决定，无需人工调用补偿接口。
 
 ```powershell
 $env:DEMO_SEATA_TESTS='true'
-mvn -B -s scripts/maven-settings.xml '-Dmaven.repo.local=.runtime/m2' -f seata/tcc-demo/pom.xml test
+mvn -B -s .mvn/settings.xml '-Dmaven.repo.local=.runtime/m2' -f seata/tcc-demo/pom.xml test
 ```
 
 测试连接真实 TC 和两库，使用 UUID 的独立用户、商品和订单，不修改演示种子或其他模块的数据；默认未设置 DEMO_SEATA_TESTS

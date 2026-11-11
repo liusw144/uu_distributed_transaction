@@ -87,7 +87,7 @@ IDEA 直接运行 [XidFilterTest](src/test/java/cn/demo/at/XidFilterTest.java) �
 填写公共六项数据库环境变量及 DEMO_DB_TESTS=true：
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata-demo -am "-Dtest=XidFilterTest,PostgresUndoLogSchemaTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata-demo -am "-Dtest=XidFilterTest,PostgresUndoLogSchemaTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 这两个测试不需要运行 TC；它们不替代本页三个业务服务的跨库 HTTP 验证。AT 不要求 PostgreSQL 启用 XA prepared transaction 参数。
