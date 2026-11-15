@@ -1,0 +1,82 @@
+# Copyright 2013-2023 the original author or authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# 本机学习适配：基于 Spring Cloud Alibaba 2023.0.3.4 integrated-example。
+# 本文件提供完整本机默认值，直接运行 main；环境变量覆盖是可选项。
+
+server:
+  # 仅监听本机，避免教学接口暴露到局域网。
+  address: 127.0.0.1
+  port: ${SERVER_PORT:18082}
+
+spring:
+  application:
+    name: integrated-storage
+  datasource:
+    # 每个服务固定使用自己的演示库，不读取其他模块的全局 MYSQL_URL。
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3308}/sca_integrated_storage?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 1
+      connection-timeout: 5000
+  cloud:
+    nacos:
+      discovery:
+        # 本机只监听回环地址，注册到 Nacos 的 IP 也必须一致。
+        ip: ${SERVICE_IP:127.0.0.1}
+        server-addr: ${NACOS_ADDRESS:127.0.0.1:8848}
+        group: ${NACOS_GROUP:UU_INTEGRATED_EXAMPLE}
+        metadata:
+          module: integrated-example
+      config:
+        server-addr: ${NACOS_ADDRESS:127.0.0.1:8848}
+        group: ${NACOS_GROUP:UU_INTEGRATED_EXAMPLE}
+        file-extension: yaml
+  config:
+    # Data ID 沿用上游命名；缺少远程配置时仍使用本文件默认值。
+    # 未在 import 中写死 group，解析时使用上面的 nacos.config.group。
+    import:
+      - optional:nacos:integrated-storage.yaml
+
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: uu_integrated_tx_group
+  # 由 Seata 自动代理本服务 Hikari 数据源，参与 AT 全局事务。
+  enable-auto-data-source-proxy: true
+  config:
+    type: file
+  registry:
+    type: file
+  service:
+    vgroup-mapping:
+      uu_integrated_tx_group: default
+    grouplist:
+      default: ${SEATA_ADDRESS:127.0.0.1:8091}
+  client:
+    undo:
+      log-serialization: jackson
+
+management:
+  endpoints:
+    web:
+      # 仅开放健康和信息查询，不暴露网关路由写入等管理接口。
+      exposure:
+        include:
+          - health
+          - info

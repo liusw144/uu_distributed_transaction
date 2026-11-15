@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<!-- 基于官方 integrated-example 修改：本机网关地址、导航和错误展示。 -->
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Seata 分布式下单示例</title>
+</head>
+<body>
+<main style="margin: 30px;">
+    <nav><a href="/order">分布式下单</a> | <a href="/sentinel">Sentinel 限流</a> | <a href="/rocketmq">RocketMQ 点赞</a>
+    </nav>
+    <h1>商品下单场景</h1>
+    <p>通过网关依次查询库存、余额，再执行订单创建并展示执行结果。</p>
+    <form id="orderForm">
+        <p><label for="userId">用户 ID</label> <input id="userId" name="userId" value="admin" required></p>
+        <p><label for="commodityCode">商品编号</label> <input id="commodityCode" name="commodityCode" value="1"
+                                                              required></p>
+        <p><label for="count">商品个数</label> <input type="number" id="count" name="count" min="1" value="1" required>
+        </p>
+        <button type="submit" id="startButton">提交</button>
+    </form>
+    <div id="orderResultSection" role="log" aria-live="polite"
+         style="margin-top: 30px; border-top: 1px solid #eaeaea;"></div>
+</main>
+<script th:inline="javascript">
+    window.demoGatewayBaseUrl = /*[[${gatewayBaseUrl}]]*/ 'http://127.0.0.1:18085';
+</script>
+<script src="/js/demo-common.js"></script>
+<script src="/js/order.js"></script>
+</body>
+</html>

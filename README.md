@@ -3,14 +3,16 @@
 [![Java quality and unit tests](https://github.com/liusw144/uu_distributed_transaction/actions/workflows/verify.yml/badge.svg)](https://github.com/liusw144/uu_distributed_transaction/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-使用 JDK 17、Spring Boot 3.3.13、MySQL 8.0、PostgreSQL、Atomikos 6.0.0 和 Seata 2.0.0，以订单、账户、库存和通知演示六类一致性方案。工程包含原有六个示例及
-Seata 四种官方模式，所有服务均从各自 application.yml 读取本机连接，直接运行主类。
+使用 JDK 17、Spring Boot 3.3.13、MySQL 8.0、PostgreSQL、Atomikos 6.0.0 和 Seata 2.0.0，以订单、账户、库存和通知演示六类一致性方案。工程包含原有六个示例、
+Seata 四种官方模式，以及 Spring Cloud Alibaba 官方 integrated-example 的本机学习适配。所有服务均从各自 application.yml
+读取本机连接，直接运行主类。
 
 构建要求 Maven 3.9+；运行前用 `mvn -version` 确认 Maven 使用 JDK 17。
 
 本页汇总公共环境、方案比较、Seata 服务端和全量验证；每个服务仅保留一份 README，集中说明本服务的原理、启动、HTTP 请求、SQL 和测试。
 
 - [服务入口](#modules)
+- [微服务综合案例 integrated-example](#integrated-example)
 - [数据库准备](#数据库准备)
 - [IDEA 直接启动](#idea-直接启动主类)
 - [Seata Server 源码 DB 配置](#seata-server)
@@ -52,6 +54,81 @@ TC。跨 JVM 的 HTTP / XID 传播参考三服务 AT。根目录手写 TCC / Sag
 
 本机默认 MySQL 127.0.0.1:3308，root/root；PostgreSQL 127.0.0.1:5432，postgres/postgres。RabbitMQ、Redis 当前未参与这些示例，无需为
 Demo 启动。
+
+<a id="integrated-example"></a>
+
+## 微服务综合案例 integrated-example
+
+源自 [Spring Cloud Alibaba 官方 integrated-example（2023.0.3.4）](https://github.com/alibaba/spring-cloud-alibaba/tree/2023.0.3.4/spring-cloud-alibaba-examples/integrated-example)，
+上游提交 `39deada43011deaaca1e8c8246fec366d98d56bb`。代码位于 [integrated-example](integrated-example/pom.xml)，
+保留原订单、点赞与限流场景，适配本机 YAML、中文说明及当前工程的代码检查。
+
+| 模块                                                                                    | 主类（包名前缀 com.alibaba.cloud.integration） | 默认端口  | 学习内容                             |
+|---------------------------------------------------------------------------------------|----------------------------------------|-------|----------------------------------|
+| [integrated-frontend](integrated-example/integrated-frontend/README.md)               | frontend.FrontendApplication           | 18080 | Thymeleaf 页面、浏览器调用网关             |
+| [integrated-order](integrated-example/integrated-order/README.md)                     | order.OrderServiceApplication          | 18081 | OpenFeign、全局事务入口                 |
+| [integrated-storage](integrated-example/integrated-storage/README.md)                 | storage.StorageServiceApplication      | 18082 | 库存条件扣减、AT 分支                     |
+| [integrated-account](integrated-example/integrated-account/README.md)                 | account.AccountServiceApplication      | 18083 | 余额条件扣减、AT 分支                     |
+| [integrated-praise-provider](integrated-example/integrated-praise-provider/README.md) | provider.PraiseProviderApplication     | 18084 | Spring Cloud Stream、RocketMQ 生产者 |
+| [integrated-gateway](integrated-example/integrated-gateway/README.md)                 | gateway.GatewayApplication             | 18085 | Gateway 路由、Sentinel 限流、CORS      |
+| [integrated-praise-consumer](integrated-example/integrated-praise-consumer/README.md) | consumer.PraiseConsumerApplication     | 18086 | 函数式消息消费者、点赞落库                    |
+
+另有纯 Java 的 integrated-common 共享结果类型与异常，没有独立端口。每个可启动服务的 README 中均有配置、接口、SQL 和验证说明。
+
+### 服务之间使用什么组件调用
+
+订单服务通过 **OpenFeign** 声明 HTTP 接口，由 **Nacos Discovery** 查询服务实例，**Spring Cloud LoadBalancer** 选择实例；
+Seata 集成在请求头中传播 `TX_XID`，将库存、账户、订单三个数据库纳入同一 AT 全局事务。内部 Feign 调用直接访问分支服务。
+
+```mermaid
+flowchart LR
+    B[浏览器页面 18080] --> G[Gateway 18085]
+    G --> O[Order 18081]
+    O -->|OpenFeign + TX_XID| S[Storage 18082]
+    O -->|OpenFeign + TX_XID| A[Account 18083]
+    N[Nacos 8848] -.服务发现.-> G
+    N -.服务发现.-> O
+    O -.全局事务.-> T[Seata TC 8091]
+    S -.AT 分支.-> T
+    A -.AT 分支.-> T
+    G --> P[Praise Provider 18084]
+    P --> M[RocketMQ]
+    M --> C[Praise Consumer 18086]
+```
+
+Gateway 承担浏览器入口，Sentinel 在网关对点赞路由限流。点赞消息使用 Spring Cloud Stream 的 RocketMQ Binder，属于另一条异步链路。
+本机已有的 RabbitMQ 不能直接替代 RocketMQ Binder；本轮按要求保留消息代码，不安装 RocketMQ，也不启动点赞生产者和消费者。
+
+### 从本机下单开始学习
+
+1. 启动本机 MySQL 3308、Nacos 8848（含 gRPC 9848）、Seata 2.0.0 TC 8091。
+2. 在 MySQL 客户端执行 [integrated-example/sql/mysql.sql](integrated-example/sql/mysql.sql)。它创建四个独立的
+   `sca_integrated_*` 库，
+   不覆盖原事务示例的 `dtx_demo_mysql`，重复执行只补缺失种子，不重置余额和库存。
+3. 在 IDEA 依次运行 Storage、Account、Order，再运行 Gateway、Frontend。全部使用各服务的 application.yml，无需专用运行配置或脚本。
+4. 打开 [本机下单页](http://127.0.0.1:18080/order)
+   ，或逐条执行 [订单 requests.http](integrated-example/integrated-order/requests.http)。
+   新库用户 `admin` 余额为 `3`，商品 `1` 库存为 `100`，单价为 `2`（整数教学单位）。第一次买一件成功，第二次余额不足，库存应回滚。
+5. 用各服务 README 中的 SQL 比较余额、库存、订单行数；响应 HTTP 200 时仍需检查业务码，`2001` 成功、`2003` 失败。
+
+固定演示会消耗共享种子，请逐条执行、先查询实际基线，避免同时运行多份请求文件。已有数据不会因重跑初始化而恢复。
+服务只监听并注册 `127.0.0.1`，Nacos 独立组为 `UU_INTEGRATED_EXAMPLE`；远程配置导入为 optional，无需预先写入 Nacos 配置。
+健康检查为 `/actuator/health`。点赞页可以加载，发送消息需要另行准备 RocketMQ。
+
+### 依赖版本与单独构建
+
+本地版本组合是 Boot `3.3.13`、Cloud `2023.0.3`、Alibaba `2023.0.3.4`、Seata **`2.0.0`**。
+Alibaba Starter 默认传递的 `org.apache.seata` 2.1 依赖已排除，显式使用 `io.seata:seata-spring-boot-starter:2.0.0`，
+与本机 TC 保持一致。该覆盖组合需要以实际构建与联调结果为依据。
+
+从仓库根目录执行，构建本案例全部 9 个 Maven 模块：
+
+```text
+mvn -B -f integrated-example/pom.xml verify
+```
+
+下单不依赖 PostgreSQL、Redis、RabbitMQ、RocketMQ。消息消费者示例保留上游的重复投递边界，尚未增加业务幂等表；不要将其作为生产可靠消息方案。
+此目录的复制代码继续遵循 [Apache-2.0](integrated-example/LICENSE)，来源与修改记录见 [NOTICE](integrated-example/NOTICE)。
 
 ## 数据库准备
 
@@ -99,7 +176,8 @@ TCC 和 Saga 使用单进程跨两库的显式教学协调器，包含持久化�
 2. 每个 Application 的 **Working directory** 统一设置为 `仓库根目录`。
 3. 直接点击对应主类的 main 运行。各模块的 `src/main/resources/application.yml` 已配置本机连接：MySQL `3308 root/root`
    ，PostgreSQL `5432 postgres/postgres`，无需额外环境变量或专用启动配置。
-4. 修改连接时编辑对应模块 YAML 的 `demo.datasource.mysql` / `demo.datasource.postgresql`。原三服务 AT
+4. 原事务示例修改连接时编辑对应模块 YAML 的 `demo.datasource.mysql` / `demo.datasource.postgresql`。integrated-example
+   使用标准 `spring.datasource`，并有独立的 Nacos 与 Seata 配置。原三服务 AT
    分别运行订单、库存、账户主类，角色配置由 `application-stock.yml` / `application-account.yml` 自动加载，见模块说明。
 
 YAML 中的 `${MYSQL_PASSWORD:root}` 等占位符允许按需使用环境变量覆盖。以下六项用于直接 JDBC 的公共集成测试，应用启动不要求填写：
@@ -115,7 +193,8 @@ PG_PASSWORD=postgres
 
 数据库测试直接读取环境变量，因此运行全部测试时六项都要填写。IDEA 的环境变量表格每行填一项。应用直接读取 YAML。
 
-服务启动后，可用浏览器访问 `http://127.0.0.1:端口/demo/health`，应返回 `{"status":"UP"}`。
+原事务服务启动后，可用浏览器访问 `http://127.0.0.1:端口/demo/health`，应返回 `{"status":"UP"}`；integrated-example 使用
+`/actuator/health`。
 
 ## 构建与直接启动
 
@@ -147,13 +226,13 @@ mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl xa-demo -am pac
 
 ## 怎样验证
 
-每个模块均包含三部分：
+各业务服务均包含三部分：
 
 - README.md：原理、IDEA 启动配置、逐步验证、SQL 与预期结果。
 - requests.http：在 IDEA HTTP Client 中逐条点击运行；也可将 URL 和 JSON 复制到 Postman / Apipost。
 - src/test/java：直接在测试类或测试方法旁点击运行，自动断言并清理自己的测试数据。
 
-每个 requests.http 顶部的 `@run` 是本轮业务号后缀。**开始新一轮时修改它；验证同一事件重试、重复消费和死信重放时保持原业务号。
+原事务示例的 requests.http 顶部 `@run` 是本轮业务号后缀。**开始新一轮时修改它；验证同一事件重试、重复消费和死信重放时保持原业务号。
 ** 原有六个方案共用全局业务号命名空间，请保留各文件的 xa/outbox/at/notify/tcc/saga 前缀。
 
 异步方案按说明逐条执行，等待 DONE 或 DEAD 后再进入下一段，避免一键 Run All 将下一场景的故障提前注入。故障计数属于整个接收端，同一时刻只进行一组故障验证。
@@ -389,7 +468,7 @@ Publisher confirm 确认的是 Broker 对发布的处理，不证明消费者的
 它解决生产端的一致性，消费端仍须本地事务、幂等及失败处理。本机 RabbitMQ 的 publisher confirm
 不等同于这一协议。[RocketMQ 事务消息](https://rocketmq.apache.org/docs/featureBehavior/04transactionmessage/)。
 
-本工程未安装或集成 RocketMQ，此项为选型说明。
+此项为事务消息选型说明。integrated-example 已保留普通 RocketMQ 异步点赞示例，尚未安装 Broker 或验证实际投递；普通发送不等同于事务消息。
 
 #### CDC Outbox：用数据库日志替代轮询
 
@@ -430,22 +509,36 @@ JTA 是 Java 事务 API；Atomikos / Narayana 是事务管理器；Seata 是多�
 
 ## 验收结果与运行边界
 
-最近一次规范化回归（2026-11-12）：**13 个 Maven 模块成功，118 个测试通过，0 失败、0 错误、0 跳过**。其中原有六方案及公共基础
-82 个测试，Seata AT 8、XA 8、TCC 9、Saga 11。
+最近一次全量回归（2026-11-15）：**22 个 Maven 模块干净构建成功，160 个测试通过，0 失败、0 错误、0 跳过**。
+其中原有六方案及公共基础 82 个测试，Seata AT 8、XA 8、TCC 9、Saga 11；新增 integrated-example 42 个测试。
+命令为 `mvn -B clean verify`，已启用上述三个真实数据库/TC 测试开关。
 
-本轮同时通过统一格式校验、P3C/PMD 检查（0 违规、0 解析错误）及独立目录干净编译。临时违规样例已验证构建会拒绝通配符导入和缺少大括号的代码，修正样例后检查通过。
+integrated-example 另已完成真实三服务下单联调，经 Gateway、Nacos 与 OpenFeign 成功提交，后续余额不足时库存回滚，
+订单数量正确持久化，非法数量、溢出数量、未知用户、库存不足及无 XID 分支请求均拒绝且不多扣资源。
+SQL 连续初始化两次不会重置种子，独立联调资源已清理，`admin` 余额 `3`、商品 `1` 库存 `100` 保留给手工学习。
+本轮进程联调通过 38 项断言，还覆盖三张页面及模板地址、首页跳转、本机跨域放行/其他来源拒绝、Sentinel 超限 HTTP 429 中文响应。
+Sentinel 验证只证明网关限流生效，未启动点赞下游。验收后五个临时业务进程已退出，学习时按上述顺序启动主类。
+RocketMQ 未安装，生产者/消费者只完成编译和单元测试，未宣称消息链路已联调。
+
+本轮同时通过统一格式校验、P3C/PMD 检查（0 违规、0 解析错误）。此前还验证过独立目录干净编译，以及临时违规样例会被检查拒绝；修正样例后检查通过。
 
 | 验证范围               | 已有验收结果                                                                             |
 |--------------------|------------------------------------------------------------------------------------|
-| YAML 主类启动          | 本轮 12 个入口均在清除数据库环境变量后成功启动并读两库；XA 临时使用 18102 验证，以保留已有的 8102 进程，其余使用默认端口 |
-| Seata 2.0.0 HTTP   | 本轮四模式 AT 12、XA 12、TCC 17、Saga 20，共 61 个场景通过；此前三服务 AT 另有 10 个请求通过 |
-| 手写 TCC / Saga HTTP | 此前分别 20 / 25 个场景通过，包括确认、取消、丢 ACK、补偿及人工恢复 |
+| YAML 主类启动          | 此前 12 个入口均在清除数据库环境变量后成功启动并读两库；XA 临时使用 18102 验证，以保留已有的 8102 进程，其余使用默认端口             |
+| Seata 2.0.0 HTTP   | 此前四模式 AT 12、XA 12、TCC 17、Saga 20，共 61 个场景通过；原三服务 AT 另有 10 个请求通过                    |
+| 手写 TCC / Saga HTTP | 此前分别 20 / 25 个场景通过，包括确认、取消、丢 ACK、补偿及人工恢复                                           |
 | TC DB 存储           | AT 事务途中观察到 1 条全局事务、2 条分支、3 条锁；全局回滚后两库恢复，协调记录清理                                     |
 | 实际进程重启恢复           | TC 与 Seata TCC 客户端中断后，从 DB 继续 Confirm；Saga 重启后从失败补偿实例恢复且不重复退款；手写协调器也已验证实际 JVM 重启恢复 |
 
-这些结果为验收时点的记录，不代表服务持续运行；TC DB 存储和进程重启两行保留此前故障演练结果。本轮日志在忽略目录 `.runtime/`：`alibaba-final-verify.log`、`alibaba-startup-http.log`、`alibaba-portability-final.log`；此前恢复日志为 `seata-200-restart.log`、`more-patterns-restart.log`。JUnit 报告位于各模块 `target/surefire-reports`。
+这些结果为验收时点的记录，不代表服务持续运行；表中原事务示例的主类/HTTP/故障恢复结果保留此前验收记录。
+本轮日志在忽略目录 `.runtime/`：`integrated-full-verify.log`、`integrated-dependency-tree.log`、`integrated-live.log`、
+`integrated-live-result.json`；
+此前日志为 `alibaba-final-verify.log`、`alibaba-startup-http.log`、`alibaba-portability-final.log`、
+`seata-200-restart.log`、`more-patterns-restart.log`。
+JUnit 报告位于各模块 `target/surefire-reports`。
 
-应用只监听 127.0.0.1，演示接口没有登录认证。金额使用 BigDecimal，库存、余额采用条件 UPDATE。两库 state
+应用只监听 127.0.0.1，演示接口没有登录认证。原事务示例金额使用 BigDecimal，integrated-example 沿用整数教学单位；库存、余额采用条件
+UPDATE。两库 state
 查询是观察快照，不提供跨库原子读，异步回滚时等待 TC 重试和最终分支状态。成功验证会消耗库存与余额，每轮重新读取基线。
 
 最大努力通知记录已支付事实，不承担跨库原子扣款。Outbox 当前通过定时任务和 HTTP 投递；RabbitMQ 管理页面可用不代表事件已通过
@@ -470,4 +563,7 @@ SQL 保留在对应 README。
 
 YAML 中 root/root、postgres/postgres 等是公开的本地演示默认值。真实账号使用环境变量或被忽略的 application-local.yml，不要提交生产凭据、密钥、日志和数据库数据。演示接口仅用于本机学习。
 
-本项目源代码采用 [MIT License](LICENSE)。Spring Boot、Seata、Atomikos、数据库驱动及构建工具遵循各自许可证；本项目不代表阿里巴巴或 Apache Seata 官方产品。
+本项目原创事务示例采用 [MIT License](LICENSE)。从官方复制并修改的 integrated-example
+子目录继续使用其 [Apache-2.0 License](integrated-example/LICENSE)，
+保留原版权头及 [NOTICE](integrated-example/NOTICE)。Spring Boot、Seata、Atomikos、数据库驱动及构建工具遵循各自许可证；本项目不代表阿里巴巴或
+Apache Seata 官方产品。

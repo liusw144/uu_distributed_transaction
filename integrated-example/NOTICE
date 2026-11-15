@@ -1,0 +1,14 @@
+Spring Cloud Alibaba Integrated Example (local learning adaptation)
+
+This subtree is derived from alibaba/spring-cloud-alibaba,
+tag 2023.0.3.4, commit 39deada43011deaaca1e8c8246fec366d98d56bb:
+https://github.com/alibaba/spring-cloud-alibaba/tree/2023.0.3.4/spring-cloud-alibaba-examples/integrated-example
+
+Copyright 2013-2023 the original author or authors.
+Modifications Copyright 2026 liusw144.
+
+Modified for independent Maven integration, local YAML startup,
+Seata 2.0.0, safe database initialization, Chinese learning documentation,
+validation and compatibility with the surrounding example repository.
+The original Apache License, Version 2.0 applies to this subtree;
+see LICENSE and the preserved source-file headers.
