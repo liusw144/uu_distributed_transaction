@@ -1,0 +1,108 @@
+# 每轮修改 @run，分组逐条执行；当前工作流达到终态后再进入下一组。
+# B～G 每组结束后资源应回到本组开始时的基线。A 组成功下单实际扣减一次。
+@base = http://127.0.0.1:8093/api/saga
+@run = manual-001
+
+### A1. 记录库存 S、余额 B
+GET {{base}}/state
+
+### A2. 正常下单，HTTP 200，工作流 SUCCEEDED / 订单 PAID
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"saga-{{run}}-paid","userId":"U1001","productId":"SKU-001","quantity":1,"unitPrice":10,"failAt":"NONE"}
+
+### A3. 重复下单，库存/余额不再扣减
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"saga-{{run}}-paid","userId":"U1001","productId":"SKU-001","quantity":1,"unitPrice":10,"failAt":"NONE"}
+
+### A4. 同订单号改业务内容，HTTP 409
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"saga-{{run}}-paid","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":10,"failAt":"NONE"}
+
+### A5. 查看单笔工作流
+GET {{base}}/orders/saga-{{run}}-paid
+
+### A6. 核对库存 S-1、余额 B-10，动作均 APPLIED
+GET {{base}}/state
+
+### B1. 订单落库后失败；HTTP 200，COMPENSATED，两库空补偿墓碑
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"saga-{{run}}-order-fail","userId":"U1001","productId":"SKU-001","quantity":1,"unitPrice":10,"failAt":"AFTER_ORDER"}
+
+### B2. 资源保持本组基线
+GET {{base}}/state
+
+### C1. 扣库存后失败；HTTP 200，COMPENSATED，库存已补回，账户空补偿
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"saga-{{run}}-stock-fail","userId":"U1001","productId":"SKU-001","quantity":1,"unitPrice":10,"failAt":"AFTER_STOCK"}
+
+### C2. 资源保持本组基线
+GET {{base}}/state
+
+### D1. 扣款后失败；HTTP 200，COMPENSATED，先退款再补库存
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"saga-{{run}}-account-fail","userId":"U1001","productId":"SKU-001","quantity":1,"unitPrice":10,"failAt":"AFTER_ACCOUNT"}
+
+### D2. 资源保持本组基线
+GET {{base}}/state
+
+### E1. 余额不足（要求当前余额低于 1000000、库存至少为 1）
+# HTTP 200，最终 COMPENSATED；账户没有实际扣款，库存已补回
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"saga-{{run}}-insufficient","userId":"U1001","productId":"SKU-001","quantity":1,"unitPrice":1000000,"failAt":"NONE"}
+
+### E2. 查询最终状态
+GET {{base}}/orders/saga-{{run}}-insufficient
+
+### F1. 让下一次补偿提交后丢失一次 ACK
+POST {{base}}/faults?phase=compensate&failNext=0&loseAckNext=1
+
+### F2. 扣款后故障触发退款，可能短暂 COMPENSATING
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"saga-{{run}}-lost-ack","userId":"U1001","productId":"SKU-001","quantity":1,"unitPrice":10,"failAt":"AFTER_ACCOUNT"}
+
+### F3. 重复查询直到 COMPENSATED，退款仅一次
+GET {{base}}/orders/saga-{{run}}-lost-ack
+
+### F4. 核对资源回到本组基线
+GET {{base}}/state
+
+### G1. 持续制造补偿失败，观察 blocked 后手动恢复
+# 使用 --demo.workflow.max-attempts=2 启动可快速观察 blocked；详见 README。
+POST {{base}}/faults?phase=compensate&failNext=1000&loseAckNext=0
+
+### G2. 触发已扣款后的补偿
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"saga-{{run}}-blocked","userId":"U1001","productId":"SKU-001","quantity":1,"unitPrice":10,"failAt":"AFTER_ACCOUNT"}
+
+### G3. 重复查询直到 COMPENSATING 且 blocked=true，订单仍 PENDING
+GET {{base}}/orders/saga-{{run}}-blocked
+
+### G4. 消除故障
+POST {{base}}/faults?phase=compensate&failNext=0&loseAckNext=0
+
+### G5. 复用原订单号手动 retry，继续已持久化的补偿决议
+POST {{base}}/orders/saga-{{run}}-blocked/retry
+
+### G6. 重复查询直到 COMPENSATED
+GET {{base}}/orders/saga-{{run}}-blocked
+
+### G7. 订单 CANCELLED，两个动作 COMPENSATED，资源回到本组基线
+GET {{base}}/state

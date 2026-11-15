@@ -1,0 +1,157 @@
+# IntelliJ IDEA HTTP Client 示例；其他客户端可发送请求，但响应脚本语法可能不通用。
+# 警告：POST 会消耗共用的 admin 余额/商品1库存；逐条执行，不要 Run All。
+# 先确保 MySQL3308、Nacos8848、Seata8091 和 Order/Storage/Account 已启动。
+# 固定演示要求初始余额3、库存100；任一基线断言失败立即停止后续请求。
+# 其他 README/requests.http/页面共用同一数据；幂等初始化不会重置它。
+# 第一次购买1件应成功；第二次余额不足应全局回滚；金额为整数教学单位。
+
+@order = http://127.0.0.1:18081
+@storage = http://127.0.0.1:18082
+@account = http://127.0.0.1:18083
+
+### 1. 读取 admin 余额基线（应为3，否则停止）
+GET {{account}}/account/?userId=admin
+
+> {%
+    client.global.set("integrated_storage_balance", "");
+    client.test("读取新库演示基线", function () {
+        client.assert(response.status === 200, "HTTP 应为 200");
+        client.assert(response.body && response.body.code === 2001, "查询必须业务成功，缺数据时不能继续");
+        client.assert(Number.isInteger(response.body.data), "data 必须是整数，不能把空结果当成 0");
+        client.global.set("integrated_storage_balance", String(response.body.data));
+        client.assert(response.body.data === 3, "固定演示基线已改变；停止后续下单，先阅读 README");
+    });
+%}
+
+### 2. 读取商品1库存基线（应为100，否则停止）
+GET {{storage}}/storage/?commodityCode=1
+
+> {%
+    client.global.set("integrated_storage_stock", "");
+    client.test("读取新库演示基线", function () {
+        client.assert(response.status === 200, "HTTP 应为 200");
+        client.assert(response.body && response.body.code === 2001, "查询必须业务成功，缺数据时不能继续");
+        client.assert(Number.isInteger(response.body.data), "data 必须是整数，不能把空结果当成 0");
+        client.global.set("integrated_storage_stock", String(response.body.data));
+        client.assert(response.body.data === 100, "固定演示基线已改变；停止后续下单，先阅读 README");
+    });
+%}
+
+### 3. 无 XID 直接扣库存必须失败（不得伪造 XID）
+POST {{storage}}/storage/reduce-stock
+Content-Type: application/json
+
+{
+    "commodityCode": "1",
+    "count": 1
+}
+
+> {%
+    client.test("3. 无 XID 直接扣库存必须失败（不得伪造 XID）", function () {
+        client.assert(response.status === 200, "业务结果应在响应体中读取");
+        client.assert(response.body && response.body.code === 2003, "预期业务失败，请同时查看 message 与服务日志");
+    });
+%}
+
+### 4. 确认被拒绝的扣减没有改变库存
+GET {{storage}}/storage/?commodityCode=1
+
+> {%
+    client.test("4. 确认被拒绝的扣减没有改变库存", function () {
+        client.assert(response.status === 200, "HTTP 应为 200");
+        client.assert(response.body && response.body.code === 2001, "查询必须业务成功，缺数据时不能继续");
+        client.assert(Number.isInteger(response.body.data), "data 必须是整数，不能把空结果当成 0");
+        const baseline = client.global.get("integrated_storage_stock");
+        client.assert(typeof baseline === "string" && baseline !== "", "必须先执行并通过基线查询");
+        client.assert(response.body.data === Number(baseline), "拒绝无 XID 扣减后资源应不变");
+    });
+%}
+
+### 5. 首次下单（仅在3/100基线时执行，会扣余额2/库存1）
+POST {{order}}/order/create
+Content-Type: application/x-www-form-urlencoded
+
+userId = admin &
+commodityCode = 1 &
+count = 1
+
+> {%
+    client.test("5. 首次下单（仅在3/100基线时执行，会扣余额2/库存1）", function () {
+        client.assert(response.status === 200, "业务结果应在响应体中读取");
+        client.assert(response.body && response.body.code === 2001, "预期下单成功，请同时查看 message 与服务日志");
+    });
+%}
+
+### 6. 成功后查询余额（预期1）
+GET {{account}}/account/?userId=admin
+
+> {%
+    client.test("6. 成功后查询余额（预期1）", function () {
+        client.assert(response.status === 200, "HTTP 应为 200");
+        client.assert(response.body && response.body.code === 2001, "查询必须业务成功，缺数据时不能继续");
+        client.assert(Number.isInteger(response.body.data), "data 必须是整数，不能把空结果当成 0");
+        const baseline = client.global.get("integrated_storage_balance");
+        client.assert(typeof baseline === "string" && baseline !== "", "必须先执行并通过基线查询");
+        client.assert(response.body.data === Number(baseline) - 2, "提交后扣减正确；失败后不得再次消耗资源");
+    });
+%}
+
+### 7. 成功后查询库存（预期99）
+GET {{storage}}/storage/?commodityCode=1
+
+> {%
+    client.test("7. 成功后查询库存（预期99）", function () {
+        client.assert(response.status === 200, "HTTP 应为 200");
+        client.assert(response.body && response.body.code === 2001, "查询必须业务成功，缺数据时不能继续");
+        client.assert(Number.isInteger(response.body.data), "data 必须是整数，不能把空结果当成 0");
+        const baseline = client.global.get("integrated_storage_stock");
+        client.assert(typeof baseline === "string" && baseline !== "", "必须先执行并通过基线查询");
+        client.assert(response.body.data === Number(baseline) - 1, "提交后扣减正确；失败后不得再次消耗资源");
+    });
+%}
+
+### 8. 第二次下单（预期余额不足，全局回滚）
+POST {{order}}/order/create
+Content-Type: application/x-www-form-urlencoded
+
+userId = admin &
+commodityCode = 1 &
+count = 1
+
+> {%
+    client.test("8. 第二次下单（预期余额不足，全局回滚）", function () {
+        client.assert(response.status === 200, "业务结果应在响应体中读取");
+        client.assert(response.body && response.body.code === 2003, "预期业务失败，请同时查看 message 与服务日志");
+    });
+%}
+
+### 9. 失败后余额保持首次成功后的值（预期1）
+GET {{account}}/account/?userId=admin
+
+> {%
+    client.test("9. 失败后余额保持首次成功后的值（预期1）", function () {
+        client.assert(response.status === 200, "HTTP 应为 200");
+        client.assert(response.body && response.body.code === 2001, "查询必须业务成功，缺数据时不能继续");
+        client.assert(Number.isInteger(response.body.data), "data 必须是整数，不能把空结果当成 0");
+        const baseline = client.global.get("integrated_storage_balance");
+        client.assert(typeof baseline === "string" && baseline !== "", "必须先执行并通过基线查询");
+        client.assert(response.body.data === Number(baseline) - 2, "提交后扣减正确；失败后不得再次消耗资源");
+    });
+%}
+
+### 10. 失败后库存恢复为首次成功后的值（预期99）
+GET {{storage}}/storage/?commodityCode=1
+
+> {%
+    client.test("10. 失败后库存恢复为首次成功后的值（预期99）", function () {
+        client.assert(response.status === 200, "HTTP 应为 200");
+        client.assert(response.body && response.body.code === 2001, "查询必须业务成功，缺数据时不能继续");
+        client.assert(Number.isInteger(response.body.data), "data 必须是整数，不能把空结果当成 0");
+        const baseline = client.global.get("integrated_storage_stock");
+        client.assert(typeof baseline === "string" && baseline !== "", "必须先执行并通过基线查询");
+        client.assert(response.body.data === Number(baseline) - 1, "提交后扣减正确；失败后不得再次消耗资源");
+    });
+%}
+
+# 再以 README 中 SQL 比较订单总数：首次增加1，失败请求不增加。
+# 如基线已变化，停止这组固定演示；不要直接重置其他实验数据。

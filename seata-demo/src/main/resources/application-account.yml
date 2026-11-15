@@ -1,0 +1,8 @@
+# 由对应角色主类自动加载；数据库连接继承 application.yml。
+server:
+  port: 8085
+spring:
+  application:
+    name: seata-account
+demo:
+  role: account

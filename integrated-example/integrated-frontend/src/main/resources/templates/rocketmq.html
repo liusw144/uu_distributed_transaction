@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<!-- 基于官方 integrated-example 修改：本机网关地址、导航和错误展示。 -->
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RocketMQ 异步点赞示例</title>
+</head>
+<body>
+<main style="margin: 30px;">
+    <nav><a href="/order">分布式下单</a> | <a href="/sentinel">Sentinel 限流</a> | <a href="/rocketmq">RocketMQ 点赞</a>
+    </nav>
+    <h1>RocketMQ 削峰填谷场景</h1>
+    <p>发起 1000 次点赞请求，异步消费更新点赞数。请先按说明安装并启动 RocketMQ 与点赞服务。</p>
+    <p>本示例演示消息链路；重复投递可能重复计数，不是生产环境的幂等实现。</p>
+    <p><label for="itemId">被点赞的商品 ID</label> <input type="number" id="itemId" value="1" min="1" required></p>
+    <button type="button" id="startButton">开始调用</button>
+    <div id="rocketmqResultSection" role="log" aria-live="polite"
+         style="margin-top: 30px; border-top: 1px solid #eaeaea;"></div>
+</main>
+<script th:inline="javascript">
+    window.demoGatewayBaseUrl = /*[[${gatewayBaseUrl}]]*/ 'http://127.0.0.1:18085';
+</script>
+<script src="/js/demo-common.js"></script>
+<script src="/js/rocketmq.js"></script>
+</body>
+</html>

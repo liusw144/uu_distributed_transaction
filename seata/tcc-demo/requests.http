@@ -1,0 +1,274 @@
+# 每轮修改 run；同一 run 重放是幂等验证，不会重新扣减。
+# 二阶段是异步的。每个 POST 后运行其 GET 断言块；若尚有冻结/未达终态，每 1 秒重跑该 GET，最多 60 秒。
+# 请按顺序执行；不要在等待二阶段时重新执行整份文件。故障注入计数只影响同一 run 的订单。
+@base = http://localhost:8103/api/seata/tcc
+@run = manual-001
+
+### 保存本轮初始资源（每轮只执行一次，先修改 run）
+GET {{base}}/state
+
+> {%
+    client.test("快照可查询", function () {
+        client.assert(response.status === 200);
+    });
+    const s = response.body.stock.find(x => x.product_id === 'p100');
+    const a = response.body.accounts.find(x => x.user_id === 'u100');
+    client.global.set('tccBaseStock', String(s.available));
+    client.global.set('tccBaseBalance', String(a.available));
+    client.test("初始没有冻结资源", function () {
+        client.assert(Number(s.frozen) === 0 && Number(a.frozen) === 0);
+    });
+%}
+
+### success
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"tcc-success-{{run}}","userId":"u100","productId":"p100","quantity":2,"unitPrice":10,"failAt":"NONE"}
+
+> {%
+    client.test("HTTP 200", function () {
+        client.assert(response.status === 200, JSON.stringify(response.body));
+    });
+%}
+
+### 查询 success 的结果；若仍在二阶段，每秒重跑本块，最多60秒
+GET {{base}}/state
+
+> {%
+    client.test("HTTP 200", function () {
+        client.assert(response.status === 200);
+    });
+    const s = response.body.stock.find(x => x.product_id === 'p100');
+    const a = response.body.accounts.find(x => x.user_id === 'u100');
+    client.test("两库资源及冻结正确", function () {
+        client.assert(Number(s.available) === Number(client.global.get('tccBaseStock')) - 2);
+        client.assert(Number(a.available) === Number(client.global.get('tccBaseBalance')) - 20);
+        client.assert(Number(s.frozen) === 0 && Number(a.frozen) === 0);
+    });
+    const id = "tcc-success-" + request.variables.get("run");
+    client.test("分支达到终态 CONFIRMED", function () {
+        const ob = response.body.orderBranches.find(x => x.order_id === id);
+        client.assert(ob && ob.state === "CONFIRMED");
+        const ab = response.body.accountBranches.find(x => x.order_id === id);
+        client.assert(ab && ab.state === "CONFIRMED");
+    });
+%}
+
+### fail-order
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"tcc-fail-order-{{run}}","userId":"u100","productId":"p100","quantity":2,"unitPrice":10,"failAt":"AFTER_ORDER"}
+
+> {%
+    client.test("HTTP 409", function () {
+        client.assert(response.status === 409, JSON.stringify(response.body));
+    });
+%}
+
+### 查询 fail-order 的结果；若仍在二阶段，每秒重跑本块，最多60秒
+GET {{base}}/state
+
+> {%
+    client.test("HTTP 200", function () {
+        client.assert(response.status === 200);
+    });
+    const s = response.body.stock.find(x => x.product_id === 'p100');
+    const a = response.body.accounts.find(x => x.user_id === 'u100');
+    client.test("两库资源及冻结正确", function () {
+        client.assert(Number(s.available) === Number(client.global.get('tccBaseStock')) - 2);
+        client.assert(Number(a.available) === Number(client.global.get('tccBaseBalance')) - 20);
+        client.assert(Number(s.frozen) === 0 && Number(a.frozen) === 0);
+    });
+%}
+
+### fail-stock
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"tcc-fail-stock-{{run}}","userId":"u100","productId":"p100","quantity":2,"unitPrice":10,"failAt":"AFTER_STOCK"}
+
+> {%
+    client.test("HTTP 409", function () {
+        client.assert(response.status === 409, JSON.stringify(response.body));
+    });
+%}
+
+### 查询 fail-stock 的结果；若仍在二阶段，每秒重跑本块，最多60秒
+GET {{base}}/state
+
+> {%
+    client.test("HTTP 200", function () {
+        client.assert(response.status === 200);
+    });
+    const s = response.body.stock.find(x => x.product_id === 'p100');
+    const a = response.body.accounts.find(x => x.user_id === 'u100');
+    client.test("两库资源及冻结正确", function () {
+        client.assert(Number(s.available) === Number(client.global.get('tccBaseStock')) - 2);
+        client.assert(Number(a.available) === Number(client.global.get('tccBaseBalance')) - 20);
+        client.assert(Number(s.frozen) === 0 && Number(a.frozen) === 0);
+    });
+    const id = "tcc-fail-stock-" + request.variables.get("run");
+    client.test("分支达到终态 CANCELLED", function () {
+        const ob = response.body.orderBranches.find(x => x.order_id === id);
+        client.assert(ob && ob.state === "CANCELLED");
+    });
+%}
+
+### fail-account
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"tcc-fail-account-{{run}}","userId":"u100","productId":"p100","quantity":2,"unitPrice":10,"failAt":"AFTER_ACCOUNT"}
+
+> {%
+    client.test("HTTP 409", function () {
+        client.assert(response.status === 409, JSON.stringify(response.body));
+    });
+%}
+
+### 查询 fail-account 的结果；若仍在二阶段，每秒重跑本块，最多60秒
+GET {{base}}/state
+
+> {%
+    client.test("HTTP 200", function () {
+        client.assert(response.status === 200);
+    });
+    const s = response.body.stock.find(x => x.product_id === 'p100');
+    const a = response.body.accounts.find(x => x.user_id === 'u100');
+    client.test("两库资源及冻结正确", function () {
+        client.assert(Number(s.available) === Number(client.global.get('tccBaseStock')) - 2);
+        client.assert(Number(a.available) === Number(client.global.get('tccBaseBalance')) - 20);
+        client.assert(Number(s.frozen) === 0 && Number(a.frozen) === 0);
+    });
+    const id = "tcc-fail-account-" + request.variables.get("run");
+    client.test("分支达到终态 CANCELLED", function () {
+        const ob = response.body.orderBranches.find(x => x.order_id === id);
+        client.assert(ob && ob.state === "CANCELLED");
+        const ab = response.body.accountBranches.find(x => x.order_id === id);
+        client.assert(ab && ab.state === "CANCELLED");
+    });
+%}
+
+### poor
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"tcc-poor-{{run}}","userId":"u100","productId":"p100","quantity":1,"unitPrice":1000000,"failAt":"NONE"}
+
+> {%
+    client.test("HTTP 409", function () {
+        client.assert(response.status === 409, JSON.stringify(response.body));
+    });
+%}
+
+### 查询 poor 的结果；若仍在二阶段，每秒重跑本块，最多60秒
+GET {{base}}/state
+
+> {%
+    client.test("HTTP 200", function () {
+        client.assert(response.status === 200);
+    });
+    const s = response.body.stock.find(x => x.product_id === 'p100');
+    const a = response.body.accounts.find(x => x.user_id === 'u100');
+    client.test("两库资源及冻结正确", function () {
+        client.assert(Number(s.available) === Number(client.global.get('tccBaseStock')) - 2);
+        client.assert(Number(a.available) === Number(client.global.get('tccBaseBalance')) - 20);
+        client.assert(Number(s.frozen) === 0 && Number(a.frozen) === 0);
+    });
+    const id = "tcc-poor-" + request.variables.get("run");
+    client.test("分支达到终态 CANCELLED", function () {
+        const ob = response.body.orderBranches.find(x => x.order_id === id);
+        client.assert(ob && ob.state === "CANCELLED");
+    });
+%}
+
+### 确认回调前两次失败（同订单后缀）
+POST {{base}}/faults/tcc-retry-confirm-{{run}}/CONFIRM/2
+
+> {%
+    client.test("HTTP 200", function () {
+        client.assert(response.status === 200, JSON.stringify(response.body));
+    });
+%}
+
+### retry-confirm
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"tcc-retry-confirm-{{run}}","userId":"u100","productId":"p100","quantity":2,"unitPrice":10,"failAt":"NONE"}
+
+> {%
+    client.test("HTTP 200", function () {
+        client.assert(response.status === 200, JSON.stringify(response.body));
+    });
+%}
+
+### 查询 retry-confirm 的结果；若仍在二阶段，每秒重跑本块，最多60秒
+GET {{base}}/state
+
+> {%
+    client.test("HTTP 200", function () {
+        client.assert(response.status === 200);
+    });
+    const s = response.body.stock.find(x => x.product_id === 'p100');
+    const a = response.body.accounts.find(x => x.user_id === 'u100');
+    client.test("两库资源及冻结正确", function () {
+        client.assert(Number(s.available) === Number(client.global.get('tccBaseStock')) - 4);
+        client.assert(Number(a.available) === Number(client.global.get('tccBaseBalance')) - 40);
+        client.assert(Number(s.frozen) === 0 && Number(a.frozen) === 0);
+    });
+    const id = "tcc-retry-confirm-" + request.variables.get("run");
+    client.test("分支达到终态 CONFIRMED", function () {
+        const ob = response.body.orderBranches.find(x => x.order_id === id);
+        client.assert(ob && ob.state === "CONFIRMED");
+        const ab = response.body.accountBranches.find(x => x.order_id === id);
+        client.assert(ab && ab.state === "CONFIRMED");
+    });
+%}
+
+### 取消回调前两次失败（同订单后缀）
+POST {{base}}/faults/tcc-retry-cancel-{{run}}/CANCEL/2
+
+> {%
+    client.test("HTTP 200", function () {
+        client.assert(response.status === 200, JSON.stringify(response.body));
+    });
+%}
+
+### retry-cancel
+POST {{base}}/orders
+Content-Type: application/json
+
+{"orderId":"tcc-retry-cancel-{{run}}","userId":"u100","productId":"p100","quantity":2,"unitPrice":10,"failAt":"AFTER_ACCOUNT"}
+
+> {%
+    client.test("HTTP 409", function () {
+        client.assert(response.status === 409, JSON.stringify(response.body));
+    });
+%}
+
+### 查询 retry-cancel 的结果；若仍在二阶段，每秒重跑本块，最多60秒
+GET {{base}}/state
+
+> {%
+    client.test("HTTP 200", function () {
+        client.assert(response.status === 200);
+    });
+    const s = response.body.stock.find(x => x.product_id === 'p100');
+    const a = response.body.accounts.find(x => x.user_id === 'u100');
+    client.test("两库资源及冻结正确", function () {
+        client.assert(Number(s.available) === Number(client.global.get('tccBaseStock')) - 4);
+        client.assert(Number(a.available) === Number(client.global.get('tccBaseBalance')) - 40);
+        client.assert(Number(s.frozen) === 0 && Number(a.frozen) === 0);
+    });
+    const id = "tcc-retry-cancel-" + request.variables.get("run");
+    client.test("分支达到终态 CANCELLED", function () {
+        const ob = response.body.orderBranches.find(x => x.order_id === id);
+        client.assert(ob && ob.state === "CANCELLED");
+        const ab = response.body.accountBranches.find(x => x.order_id === id);
+        client.assert(ab && ab.state === "CANCELLED");
+    });
+%}
+

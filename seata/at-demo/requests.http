@@ -1,0 +1,149 @@
+# 先启动 TC 和本模块；每轮修改 run。按顺序执行全部请求。
+@host = http://127.0.0.1:8101
+@run = manual-001
+
+### 记录两库基线
+GET {{host}}/api/seata/at/state
+
+> {%
+    client.test("查询基线", function () {
+        client.assert(response.status === 200, "应返回 200");
+        const stock = response.body.stock.find(x => x.id === "SEATA_AT:SKU-001");
+        const account = response.body.accounts.find(x => x.id === "SEATA_AT:U1001");
+        client.assert(stock && account, "先执行模块 SQL");
+        client.global.set("atStock", String(stock.available));
+        client.global.set("atBalance", String(account.balance));
+    });
+%}
+
+### 成功提交，数量2、单价10
+POST {{host}}/api/seata/at/orders
+Content-Type: application/json
+
+{"orderId":"seata-at-{{run}}-ok","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":10.00,"failAt":"NONE"}
+
+> {%
+    client.test("真实全局事务提交", function () {
+        client.assert(response.status === 200, "应成功");
+        client.assert(response.body.xid && /.+:[0-9]+:[0-9]+$/.test(response.body.xid), "应返回真实 Seata XID");
+    });
+%}
+
+### 核对成功后的数据
+GET {{host}}/api/seata/at/state
+
+> {%
+    client.test("只扣一次库存和余额", function () {
+        client.assert(response.status === 200);
+        client.assert(Number(response.body.stock.find(x => x.id === "SEATA_AT:SKU-001").available) === Number(client.global.get("atStock")) - 2);
+        client.assert(Number(response.body.accounts.find(x => x.id === "SEATA_AT:U1001").balance) === Number(client.global.get("atBalance")) - 20);
+    });
+%}
+
+### 重复业务号，返回冲突
+POST {{host}}/api/seata/at/orders
+Content-Type: application/json
+
+{"orderId":"seata-at-{{run}}-ok","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":10.00,"failAt":"NONE"}
+
+> {%
+    client.test("重复不会再次扣减", function () {
+        client.assert(response.status === 409);
+    });
+%}
+
+### 相同业务号改数量，仍拒绝
+POST {{host}}/api/seata/at/orders
+Content-Type: application/json
+
+{"orderId":"seata-at-{{run}}-ok","userId":"U1001","productId":"SKU-001","quantity":3,"unitPrice":10.00,"failAt":"NONE"}
+
+> {%
+    client.test("不同内容不能复用业务号", function () {
+        client.assert(response.status === 409);
+    });
+%}
+
+### AFTER_ORDER：应回滚已参与的资源
+POST {{host}}/api/seata/at/orders
+Content-Type: application/json
+
+{"orderId":"seata-at-{{run}}-order","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":10.00,"failAt":"AFTER_ORDER"}
+
+> {%
+    client.test("AFTER_ORDER 触发全局回滚", function () {
+        client.assert(response.status === 409);
+    });
+%}
+
+### AFTER_STOCK：应回滚已参与的资源
+POST {{host}}/api/seata/at/orders
+Content-Type: application/json
+
+{"orderId":"seata-at-{{run}}-stock","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":10.00,"failAt":"AFTER_STOCK"}
+
+> {%
+    client.test("AFTER_STOCK 触发全局回滚", function () {
+        client.assert(response.status === 409);
+    });
+%}
+
+### AFTER_ACCOUNT：应回滚已参与的资源
+POST {{host}}/api/seata/at/orders
+Content-Type: application/json
+
+{"orderId":"seata-at-{{run}}-account","userId":"U1001","productId":"SKU-001","quantity":2,"unitPrice":10.00,"failAt":"AFTER_ACCOUNT"}
+
+> {%
+    client.test("AFTER_ACCOUNT 触发全局回滚", function () {
+        client.assert(response.status === 409);
+    });
+%}
+
+### 余额不足，MySQL 已执行的分支也须回滚
+POST {{host}}/api/seata/at/orders
+Content-Type: application/json
+
+{"orderId":"seata-at-{{run}}-poor","userId":"U1001","productId":"SKU-001","quantity":1,"unitPrice":1000000.00}
+
+> {%
+    client.test("余额不足回滚", function () {
+        client.assert(response.status === 409);
+    });
+%}
+
+### 库存不足
+POST {{host}}/api/seata/at/orders
+Content-Type: application/json
+
+{"orderId":"seata-at-{{run}}-empty","userId":"U1001","productId":"SKU-001","quantity":1000,"unitPrice":0.01}
+
+> {%
+    client.test("库存不足回滚", function () {
+        client.assert(response.status === 409);
+    });
+%}
+
+### 参数校验
+POST {{host}}/api/seata/at/orders
+Content-Type: application/json
+
+{"orderId":"seata-at-{{run}}-invalid","userId":"U1001","productId":"SKU-001","quantity":0,"unitPrice":10.00}
+
+> {%
+    client.test("非法数量应为400", function () {
+        client.assert(response.status === 400);
+    });
+%}
+
+### 最终只保留成功订单产生的扣减；如 TC 正在恢复，可稍后重试此查询
+GET {{host}}/api/seata/at/state
+
+> {%
+    client.test("所有失败均未额外扣减", function () {
+        client.assert(response.status === 200);
+        client.assert(Number(response.body.stock.find(x => x.id === "SEATA_AT:SKU-001").available) === Number(client.global.get("atStock")) - 2, "库存应只减2");
+        client.assert(Number(response.body.accounts.find(x => x.id === "SEATA_AT:U1001").balance) === Number(client.global.get("atBalance")) - 20, "余额应只减20");
+    });
+%}
+

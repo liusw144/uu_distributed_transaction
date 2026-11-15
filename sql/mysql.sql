@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS demo_tasks (
   created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   INDEX idx_task_poll(task_type,status,next_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
--- 与 Apache Seata 2.2.0 客户端 AT undo_log 结构对应。
+-- 与 Apache Seata 2.0.0 客户端 AT undo_log 结构对应。
 CREATE TABLE IF NOT EXISTS undo_log (
   branch_id BIGINT NOT NULL, xid VARCHAR(128) NOT NULL,
   context VARCHAR(128) NOT NULL, rollback_info LONGBLOB NOT NULL,

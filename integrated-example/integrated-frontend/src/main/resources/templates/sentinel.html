@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<!-- 基于官方 integrated-example 修改：本机网关地址、导航和错误展示。 -->
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sentinel 网关限流示例</title>
+</head>
+<body>
+<main style="margin: 30px;">
+    <nav><a href="/order">分布式下单</a> | <a href="/sentinel">Sentinel 限流</a> | <a href="/rocketmq">RocketMQ 点赞</a>
+    </nav>
+    <h1>Sentinel 限流场景</h1>
+    <p>同时发起 10 次点赞请求；默认网关规则每秒最多允许 5 次，超限返回 HTTP 429。</p>
+    <p><label for="itemId">被点赞的商品 ID</label> <input type="number" id="itemId" value="1" min="1" required></p>
+    <button type="button" id="startButton">开始调用</button>
+    <div id="sentinelResultSection" role="log" aria-live="polite"
+         style="margin-top: 30px; border-top: 1px solid #eaeaea;"></div>
+</main>
+<script th:inline="javascript">
+    window.demoGatewayBaseUrl = /*[[${gatewayBaseUrl}]]*/ 'http://127.0.0.1:18085';
+</script>
+<script src="/js/demo-common.js"></script>
+<script src="/js/sentinel.js"></script>
+</body>
+</html>

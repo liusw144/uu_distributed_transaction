@@ -4,7 +4,9 @@
 
 ## 1. 直接运行服务
 
-完成[公共数据库和环境配置](../README.md)，IDEA 运行 `cn.demo.outbox.OutboxApplication`，Working directory 为项目根目录。为了快速观察死信，Program arguments 填写：
+完成[公共数据库初始化](../README.md)，IDEA 选择 JDK 17，直接运行 `cn.demo.outbox.OutboxApplication`，Working directory
+为项目根目录。连接读取 [application.yml](src/main/resources/application.yml) 的 `demo.datasource`：MySQL `3308 root/root`
+、PG `5432 postgres/postgres`，无需数据库环境变量。以下 Program arguments 仅用于快速观察死信，可选：
 
 ```text
 --demo.retry.max-attempts=3 --demo.retry.base-seconds=1 --demo.retry.max-seconds=2
@@ -95,5 +97,11 @@ A～D 全部完成后，相对于本轮最初基线，只有 paid 和 dead 两�
 现有用例覆盖重复消费只扣一次、相同编号内容冲突、余额不足仅补偿一次、本地提交失败不留下订单或任务。测试中定时任务关闭，用测试方法驱动每个确认步骤。
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl outbox-demo -am "-Dtest=OutboxScenarioTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl outbox-demo -am "-Dtest=OutboxScenarioTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
+
+## 已验证范围
+
+2026-11-11 最近一次业务代码验收：本模块 3 个 Java 测试通过。本地事务回滚、重复消费、业务内容冲突和拒绝扣款后的库存补偿；无数据库环境变量启动及两库读取通过。
+
+公共环境、Seata Server 配置及全项目验收汇总见[根 README](../README.md)。

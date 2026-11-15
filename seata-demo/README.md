@@ -4,39 +4,29 @@
 
 ## 1. 准备 TC
 
-完成[公共数据库和环境配置](../README.md)，确认两库已执行 SQL，包含 undo_log 表。PG 的 undo_log 必须包含 id 和 undo_log_id_seq，不能直接照搬 MySQL 表结构。
+完成[公共数据库初始化](../README.md)，确认两库已执行 SQL，包含 undo_log 表。PG 的 undo_log 必须包含 id 和
+undo_log_id_seq，不能直接照搬 MySQL 表结构。
 
-将官方 Seata Server 2.2.0 二进制包解压至项目根目录的 .runtime/seata，得到：
+客户端现已统一为 io.seata:seata-spring-boot-starter:2.0.0。按根 README 配置 Seata 2.0.0 源码的 DB 存储，并在 IDEA 直接运行 io.seata.server.ServerApplication。TC 使用独立 MySQL 协调库 seata_tc_200；完整步骤见 [根目录的 Seata Server 配置](../README.md#seata-server)。
 
-```text
-.runtime/seata/seata-server/target/seata-server.jar
-.runtime/seata/seata-server/lib/
-.runtime/seata/seata-server/conf/logback-spring.xml
-```
-
-本机之前已安装在该位置时可直接使用。在项目根目录直接执行以下一行命令启动 TC；外部终端使用 JDK 17：
-
-```text
-java -Xms128m -Xmx512m "-Dloader.path=.runtime/seata/seata-server/lib" "-Dlog.home=.runtime/logs/seata" "-Dspring.config.location=file:config/seata-server.yml" "-Dlogging.config=.runtime/seata/seata-server/conf/logback-spring.xml" -jar .runtime/seata/seata-server/target/seata-server.jar -h 127.0.0.1 -p 8091
-```
-
-日志出现 service listen port: 8091 后再启动业务服务。TC 使用 [config/seata-server.yml](../config/seata-server.yml)，控制台为 http://127.0.0.1:7091，账号 seata/seata。自有安装目录可替换上述 jar、lib 和 logback 路径。
-
-TC 工作目录也必须是项目根目录，事务文件保存在 .runtime/seata-data；恢复时保留该目录。
+日志出现 session / lock store mode: db 与 service listen port: 8091 后再启动业务服务。控制台为 http://127.0.0.1:7091，账号
+seata/seata；事务协调地址为 127.0.0.1:8091。DB 模式恢复依赖 TC 库。
 
 ## 2. IDEA 启动三个独立进程
 
-复制三个 Application 运行配置，Main class 均为 `cn.demo.at.SeataApplication`，Working directory 均为项目根目录，分别填写公共六项数据库环境变量。
+IDEA 选择 JDK 17，Working directory 为项目根目录，分别直接运行以下 main，无需环境变量或 Program
+arguments。两库连接统一读取 [application.yml](src/main/resources/application.yml) 的 `demo.datasource`，本机默认 MySQL
+`3308 root/root`、PG `5432 postgres/postgres`。
 
-| 配置名称 | Program arguments |
-|---|---|
-| at-stock | --demo.role=stock --server.port=8084 --spring.application.name=seata-stock |
-| at-account | --demo.role=account --server.port=8085 --spring.application.name=seata-account |
-| at-order | --demo.role=order --server.port=8083 --spring.application.name=seata-order |
+| 角色      | 主类                                 | 自动加载配置 / 端口                    |
+|---------|------------------------------------|--------------------------------|
+| stock   | cn.demo.at.SeataStockApplication   | application-stock.yml / 8084   |
+| account | cn.demo.at.SeataAccountApplication | application-account.yml / 8085 |
+| order   | cn.demo.at.SeataApplication        | application.yml / 8083         |
 
 先启动 stock、account，最后启动 order。依次访问 8084、8085、8083 的 /demo/health。
 
-或者在根目录三个独立终端中执行：
+jar 默认入口为订单主类；也可在根目录三个独立终端中执行以下兼容命令：
 
 ```text
 java -jar seata-demo/target/seata-demo-1.0.0.jar --demo.role=stock --server.port=8084 --spring.application.name=seata-stock
@@ -95,7 +85,14 @@ IDEA 直接运行 [XidFilterTest](src/test/java/cn/demo/at/XidFilterTest.java) �
 填写公共六项数据库环境变量及 DEMO_DB_TESTS=true：
 
 ```text
-mvn -B -s scripts/maven-settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata-demo -am "-Dtest=XidFilterTest,PostgresUndoLogSchemaTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
+mvn -B -s .mvn/settings.xml "-Dmaven.repo.local=.runtime/m2" -pl seata-demo -am "-Dtest=XidFilterTest,PostgresUndoLogSchemaTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 这两个测试不需要运行 TC；它们不替代本页三个业务服务的跨库 HTTP 验证。AT 不要求 PostgreSQL 启用 XA prepared transaction 参数。
+
+## 已验证范围
+
+2026-11-11 最近一次业务代码验收：本模块 2 个 Java 测试通过。XID 清理及 PostgreSQL Undo Log 结构；2.0.0 TC 下 10 个 HTTP
+请求通过。订单、库存、账户三个主类均已无数据库环境变量启动验证。
+
+公共环境、Seata Server 配置及全项目验收汇总见[根 README](../README.md)。

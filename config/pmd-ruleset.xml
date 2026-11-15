@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="Alibaba Java Guidelines"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+    <description>阿里 P3C 全部分组规则，以及本项目禁止通配符导入的约束。</description>
+    <rule ref="rulesets/java/ali-comment.xml"/>
+    <rule ref="rulesets/java/ali-concurrent.xml"/>
+    <rule ref="rulesets/java/ali-constant.xml"/>
+    <rule ref="rulesets/java/ali-exception.xml"/>
+    <rule ref="rulesets/java/ali-flowcontrol.xml">
+        <!-- P3C 旧规则误报 Java 17 箭头 case；下面用 PMD 的等价规则检查默认分支。 -->
+        <exclude name="SwitchStatementRule"/>
+    </rule>
+    <rule ref="category/java/bestpractices.xml/SwitchStmtsShouldHaveDefault"/>
+    <rule ref="rulesets/java/ali-naming.xml"/>
+    <rule ref="rulesets/java/ali-oop.xml"/>
+    <rule ref="rulesets/java/ali-orm.xml"/>
+    <rule ref="rulesets/java/ali-other.xml"/>
+    <rule ref="rulesets/java/ali-set.xml"/>
+    <rule ref="category/java/codestyle.xml/UnnecessaryImport"/>
+    <rule name="NoWildcardImports" language="java" message="使用显式导入，禁止通配符导入。"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <priority>3</priority>
+        <properties>
+            <property name="xpath"><value>//ImportDeclaration[@ImportOnDemand = 'true']</value></property>
+        </properties>
+    </rule>
+</ruleset>

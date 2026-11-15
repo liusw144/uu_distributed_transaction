@@ -1,0 +1,63 @@
+# IntelliJ IDEA HTTP Client 示例；当前未安装 RocketMQ，本轮不执行这些 MQ 联调请求。
+# 后续先安装 NameServer127.0.0.1:9876 与可达 Broker，再启动 Provider/Consumer。
+# 还需 Nacos8848、MySQL3308 与已初始化的 sca_integrated_praise.item(id=1)。
+# 警告：虽然发送端点使用 GET，它会发送消息并改变点赞数；请逐条执行，不要 Run All。
+# 先读取实际基线，发送一次后稍后重查。true 不等于消费完成。
+# 本示例无严格一次业务处理保证；重投/其他发送者会影响增量，不做精确+1保证断言。
+
+@provider = http://127.0.0.1:18084
+@consumer = http://127.0.0.1:18086
+@gateway = http://127.0.0.1:18085
+
+### 1. 读取商品1点赞基线（只读；空数据或非整数不能当作成功）
+GET {{consumer}}/praise/query?itemId=1
+
+> {%
+    client.global.set("integrated_praise_consumer_praise", "");
+    client.test("读取有效的点赞基线", function () {
+        client.assert(response.status === 200, "查询应成功");
+        client.assert(Number.isInteger(response.body), "必须返回整数；先核对种子商品和数据库配置");
+        client.global.set("integrated_praise_consumer_praise", String(response.body));
+    });
+%}
+
+### 2. 发送一条点赞消息（会改变数据，需 MQ 就绪）
+GET {{provider}}/praise/rocketmq?itemId=1
+
+> {%
+    client.test("发送调用返回", function () {
+        client.assert(response.status === 200, "发送调用应返回 HTTP 200");
+        client.assert(response.body === true, "预期布尔 true；它只表示发送调用返回成功");
+    });
+%}
+
+### 3. 等待消费后查询（必要时仅重复本条；不要重复发送来等待）
+GET {{consumer}}/praise/query?itemId=1
+
+> {%
+    client.test("读取异步消费状态", function () {
+        client.assert(response.status === 200, "查询应成功");
+        client.assert(Number.isInteger(response.body), "必须返回整数，不能把空结果当作0");
+        const baseline = client.global.get("integrated_praise_consumer_praise");
+        client.assert(typeof baseline === "string" && baseline !== "", "必须先读取有效基线");
+        client.log("基线=" + baseline + "，当前=" + response.body + "，差值=" + (response.body - Number(baseline)));
+        if (response.body === Number(baseline)) {
+            client.log("数值尚未变化：这不是消费完成证明；稍后仅重复查询，并查看消费者日志和SQL。");
+        }
+    });
+%}
+
+# 以下是可选的第二次发送，会再次改变点赞数；需 Gateway18085 及所有 MQ 依赖。
+# 仅经网关 /praise/sentinel 才受网关规则限制；单次请求不能证明限流。
+
+### 4. 可选：经网关发送一次（不是无 MQ 的独立场景）
+GET {{gateway}}/praise/sentinel?itemId=1
+
+> {%
+    client.test("检查网关发送响应", function () {
+        client.assert(response.status === 200, "单次手工请求预期未被限流；限流时请查看 HTTP 状态和响应体");
+        client.assert(response.body === true, "预期布尔 true，不能把限流提示当作发送成功");
+    });
+%}
+
+# 步骤4后需要观察结果时，重复步骤3的只读查询，并用 README 中 SQL 核对。

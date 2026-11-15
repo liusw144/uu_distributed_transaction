@@ -1,0 +1,39 @@
+# IntelliJ IDEA HTTP Client 示例；仅 GET HTML，不执行页面 JavaScript 或点击按钮。
+# 这些断言只能验证页面渲染，不能证明下单、限流或 MQ 消费成功。
+# 若在浏览器中点击下单按钮，会消耗余额/库存；先核对基线与 README。
+# 当前未安装 RocketMQ，/sentinel 与 /rocketmq 仅可检查页面，业务联调待安装 MQ 后进行。
+
+@frontend = http://127.0.0.1:18080
+
+### 获取下单页面（不操作按钮）
+GET {{frontend}}/order
+
+> {%
+    client.test("HTML 页面返回", function () {
+        client.assert(response.status === 200, "页面应返回 HTTP 200");
+        client.assert(typeof response.body === "string", "页面应返回 HTML 文本");
+        client.assert(response.body.includes("orderResultSection"), "应包含对应页面的结果展示区域");
+    });
+%}
+
+### 获取Sentinel页面（不操作按钮）
+GET {{frontend}}/sentinel
+
+> {%
+    client.test("HTML 页面返回", function () {
+        client.assert(response.status === 200, "页面应返回 HTTP 200");
+        client.assert(typeof response.body === "string", "页面应返回 HTML 文本");
+        client.assert(response.body.includes("sentinelResultSection"), "应包含对应页面的结果展示区域");
+    });
+%}
+
+### 获取RocketMQ页面（不操作按钮）
+GET {{frontend}}/rocketmq
+
+> {%
+    client.test("HTML 页面返回", function () {
+        client.assert(response.status === 200, "页面应返回 HTTP 200");
+        client.assert(typeof response.body === "string", "页面应返回 HTML 文本");
+        client.assert(response.body.includes("rocketmqResultSection"), "应包含对应页面的结果展示区域");
+    });
+%}

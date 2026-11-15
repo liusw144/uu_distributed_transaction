@@ -7,6 +7,15 @@ spring:
 demo:
   datasource:
     mode: xa
+    # 本机连接可直接使用；更换账号时修改本文件，环境变量覆盖为可选项。
+    mysql:
+      jdbc-url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3308/dtx_demo_mysql?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true}
+      username: ${MYSQL_USER:root}
+      password: ${MYSQL_PASSWORD:root}
+    postgresql:
+      jdbc-url: ${PG_URL:jdbc:postgresql://127.0.0.1:5432/dtx_demo_pg}
+      username: ${PG_USER:postgres}
+      password: ${PG_PASSWORD:postgres}
 atomikos:
   properties:
     transaction-manager-unique-name: dtx-xa-local

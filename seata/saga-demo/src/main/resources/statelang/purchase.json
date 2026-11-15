@@ -1,0 +1,188 @@
+{
+  "Name": "seataSagaPurchase",
+  "Comment": "Seata persisted Saga over MySQL and PostgreSQL",
+  "Version": "1.0.0",
+  "StartState": "Order",
+  "States": {
+    "Order": {
+      "Type": "ServiceTask",
+      "ServiceName": "sagaParticipant",
+      "ServiceMethod": "order",
+      "CompensateState": "UndoOrder",
+      "Next": "AfterOrder",
+      "Input": [
+        "$.[p]"
+      ],
+      "Status": {
+        "#root == true": "SU",
+        "$Exception{java.lang.Throwable}": "UN"
+      },
+      "Catch": [
+        {
+          "Exceptions": [
+            "java.lang.Throwable"
+          ],
+          "Next": "Compensate"
+        }
+      ]
+    },
+    "UndoOrder": {
+      "Type": "ServiceTask",
+      "ServiceName": "sagaParticipant",
+      "ServiceMethod": "undoOrder",
+      "Input": [
+        "$.[p]"
+      ],
+      "Status": {
+        "#root == true": "SU",
+        "$Exception{java.lang.Throwable}": "UN"
+      }
+    },
+    "AfterOrder": {
+      "Type": "ServiceTask",
+      "ServiceName": "sagaParticipant",
+      "ServiceMethod": "afterOrder",
+      "IsForUpdate": false,
+      "Next": "Stock",
+      "Input": [
+        "$.[p]"
+      ],
+      "Status": {
+        "#root == true": "SU",
+        "$Exception{java.lang.Throwable}": "FA"
+      },
+      "Catch": [
+        {
+          "Exceptions": [
+            "java.lang.Throwable"
+          ],
+          "Next": "Compensate"
+        }
+      ]
+    },
+    "Stock": {
+      "Type": "ServiceTask",
+      "ServiceName": "sagaParticipant",
+      "ServiceMethod": "stock",
+      "CompensateState": "UndoStock",
+      "Next": "AfterStock",
+      "Input": [
+        "$.[p]"
+      ],
+      "Status": {
+        "#root == true": "SU",
+        "$Exception{java.lang.Throwable}": "UN"
+      },
+      "Catch": [
+        {
+          "Exceptions": [
+            "java.lang.Throwable"
+          ],
+          "Next": "Compensate"
+        }
+      ]
+    },
+    "UndoStock": {
+      "Type": "ServiceTask",
+      "ServiceName": "sagaParticipant",
+      "ServiceMethod": "undoStock",
+      "Input": [
+        "$.[p]"
+      ],
+      "Status": {
+        "#root == true": "SU",
+        "$Exception{java.lang.Throwable}": "UN"
+      }
+    },
+    "AfterStock": {
+      "Type": "ServiceTask",
+      "ServiceName": "sagaParticipant",
+      "ServiceMethod": "afterStock",
+      "IsForUpdate": false,
+      "Next": "Account",
+      "Input": [
+        "$.[p]"
+      ],
+      "Status": {
+        "#root == true": "SU",
+        "$Exception{java.lang.Throwable}": "FA"
+      },
+      "Catch": [
+        {
+          "Exceptions": [
+            "java.lang.Throwable"
+          ],
+          "Next": "Compensate"
+        }
+      ]
+    },
+    "Account": {
+      "Type": "ServiceTask",
+      "ServiceName": "sagaParticipant",
+      "ServiceMethod": "account",
+      "CompensateState": "UndoAccount",
+      "Next": "AfterAccount",
+      "Input": [
+        "$.[p]"
+      ],
+      "Status": {
+        "#root == true": "SU",
+        "$Exception{java.lang.Throwable}": "UN"
+      },
+      "Catch": [
+        {
+          "Exceptions": [
+            "java.lang.Throwable"
+          ],
+          "Next": "Compensate"
+        }
+      ]
+    },
+    "UndoAccount": {
+      "Type": "ServiceTask",
+      "ServiceName": "sagaParticipant",
+      "ServiceMethod": "undoAccount",
+      "Input": [
+        "$.[p]"
+      ],
+      "Status": {
+        "#root == true": "SU",
+        "$Exception{java.lang.Throwable}": "UN"
+      }
+    },
+    "AfterAccount": {
+      "Type": "ServiceTask",
+      "ServiceName": "sagaParticipant",
+      "ServiceMethod": "afterAccount",
+      "IsForUpdate": false,
+      "Next": "Succeed",
+      "Input": [
+        "$.[p]"
+      ],
+      "Status": {
+        "#root == true": "SU",
+        "$Exception{java.lang.Throwable}": "FA"
+      },
+      "Catch": [
+        {
+          "Exceptions": [
+            "java.lang.Throwable"
+          ],
+          "Next": "Compensate"
+        }
+      ]
+    },
+    "Compensate": {
+      "Type": "CompensationTrigger",
+      "Next": "Fail"
+    },
+    "Fail": {
+      "Type": "Fail",
+      "ErrorCode": "PURCHASE_FAILED",
+      "Message": "Purchase failed; inspect compensationStatus"
+    },
+    "Succeed": {
+      "Type": "Succeed"
+    }
+  }
+}
